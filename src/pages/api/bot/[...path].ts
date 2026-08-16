@@ -16,6 +16,7 @@ const BOT_TOKEN =
   process.env.TOKEN ||
   process.env.BOT_CLIENT_TOKEN ||
   process.env.NEXT_PUBLIC_BOT_TOKEN ||
+  process.env.NEXT_PUBLIC_DISCORD_BOT_TOKEN ||
   '';
 
 const DASHBOARD_API_TOKEN = process.env.DASHBOARD_API_TOKEN || '';
@@ -92,7 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json(data);
       }
     } catch (err: any) {
-      console.warn('Could not reach external Bot API, falling back to Next.js handler:', err?.message || err);
+      console.warn('Could not reach external Bot API, falling back to Next.js Discord handler:', err?.message || err);
     }
   }
 
@@ -124,14 +125,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (subResource === 'roles') {
       if (BOT_TOKEN) {
         try {
-          console.log(`[API /bot/guild/${guildId}/roles] Requesting roles from Discord API`);
           const rolesRes = await fetch(`${API_ENDPOINT}/guilds/${guildId}/roles`, {
             headers: { Authorization: `Bot ${BOT_TOKEN}` },
           });
 
           if (rolesRes.ok) {
             const rolesData: any[] = await rolesRes.json();
-            console.log(`[API /bot/guild/${guildId}/roles] Found ${rolesData.length} roles for guild ${guildId}`);
             const normalizedRoles = rolesData.map((r) => ({
               id: String(r.id),
               name: String(r.name),
@@ -146,7 +145,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const errText = await rolesRes.text().catch(() => '');
             console.warn(`[API /bot/guild/${guildId}/roles] Discord API error: ${rolesRes.status} ${errText}`);
             if (rolesRes.status === 403) {
-              return res.status(403).json({ error: 'Bot is missing permissions to view roles in this server' });
+              return res.status(403).json({ error: 'Bot lacks permission to view roles in this server' });
             }
             if (rolesRes.status === 404) {
               return res.status(404).json({ error: 'Server not found or Bot is not in this server' });
@@ -158,7 +157,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return res.status(500).json({ error: e?.message || 'Failed to fetch roles from Discord API' });
         }
       } else {
-        console.warn(`[API /bot/guild/${guildId}/roles] BOT_TOKEN is not configured`);
         return res.status(500).json({ error: 'Bot token is not configured on server (DISCORD_BOT_TOKEN)' });
       }
     }
@@ -169,14 +167,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (subResource === 'channels') {
       if (BOT_TOKEN) {
         try {
-          console.log(`[API /bot/guild/${guildId}/channels] Requesting channels from Discord API`);
           const channelsRes = await fetch(`${API_ENDPOINT}/guilds/${guildId}/channels`, {
             headers: { Authorization: `Bot ${BOT_TOKEN}` },
           });
 
           if (channelsRes.ok) {
             const channelsData: any[] = await channelsRes.json();
-            console.log(`[API /bot/guild/${guildId}/channels] Found ${channelsData.length} channels for guild ${guildId}`);
             const normalizedChannels = channelsData.map((ch) => ({
               id: String(ch.id),
               name: String(ch.name),
@@ -191,7 +187,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const errText = await channelsRes.text().catch(() => '');
             console.warn(`[API /bot/guild/${guildId}/channels] Discord API error: ${channelsRes.status} ${errText}`);
             if (channelsRes.status === 403) {
-              return res.status(403).json({ error: 'Bot is missing permissions to view channels in this server' });
+              return res.status(403).json({ error: 'Bot lacks permission to view channels in this server' });
             }
             if (channelsRes.status === 404) {
               return res.status(404).json({ error: 'Server not found or Bot is not in this server' });
@@ -203,7 +199,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return res.status(500).json({ error: e?.message || 'Failed to fetch channels from Discord API' });
         }
       } else {
-        console.warn(`[API /bot/guild/${guildId}/channels] BOT_TOKEN is not configured`);
         return res.status(500).json({ error: 'Bot token is not configured on server (DISCORD_BOT_TOKEN)' });
       }
     }
