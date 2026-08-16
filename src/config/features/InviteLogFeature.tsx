@@ -6,6 +6,7 @@ import { UseFormRender, UseFormRenderResult } from '@/config/types';
 import { InviteLogFeature } from '@/config/types/custom-types';
 import { ConfigExportCard } from '@/components/feature/ConfigExportCard';
 import { useRouter } from 'next/router';
+import { useEffect } from 'react';
 
 export const useInviteLogFeature: UseFormRender<InviteLogFeature> = (
   initial,
@@ -19,6 +20,15 @@ export const useInviteLogFeature: UseFormRender<InviteLogFeature> = (
     },
   });
 
+  useEffect(() => {
+    if (initial) {
+      reset({
+        enabled: initial.enabled ?? true,
+        inviteLogChannelId: initial.inviteLogChannelId ?? '',
+      });
+    }
+  }, [initial, reset]);
+
   const values = watch();
 
   const exportText = `// MG3 Invite Logger Configuration for Guild: ${guild || 'GUILD_ID'}
@@ -27,10 +37,15 @@ module.exports = {
   INVITE_LOG_CHANNEL_ID: '${values.inviteLogChannelId || ''}'
 };`;
 
+  const onFormSubmit = async (data: InviteLogFeature) => {
+    await onSubmit(JSON.stringify(data));
+    reset(data);
+  };
+
   return {
     canSave: formState.isDirty,
     reset: () => reset(),
-    onSubmit: handleSubmit((values) => onSubmit(JSON.stringify(values))),
+    onSubmit: handleSubmit(onFormSubmit),
     component: (
       <VStack spacing={4} align="stretch">
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>

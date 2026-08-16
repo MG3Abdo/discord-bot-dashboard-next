@@ -6,6 +6,7 @@ import { UseFormRender, UseFormRenderResult } from '@/config/types';
 import { BlacklistFeature } from '@/config/types/custom-types';
 import { ConfigExportCard } from '@/components/feature/ConfigExportCard';
 import { useRouter } from 'next/router';
+import { useEffect } from 'react';
 
 export const useBlacklistFeature: UseFormRender<BlacklistFeature> = (
   initial,
@@ -21,6 +22,17 @@ export const useBlacklistFeature: UseFormRender<BlacklistFeature> = (
     },
   });
 
+  useEffect(() => {
+    if (initial) {
+      reset({
+        blacklistRoleId: initial.blacklistRoleId ?? '',
+        ceoRoleId: initial.ceoRoleId ?? '',
+        blockTickets: initial.blockTickets ?? true,
+        deleteRequestMessages: initial.deleteRequestMessages ?? true,
+      });
+    }
+  }, [initial, reset]);
+
   const values = watch();
 
   const exportText = `// MG3 Blacklist Configuration for Guild: ${guild || 'GUILD_ID'}
@@ -31,10 +43,15 @@ module.exports = {
   DELETE_REQUEST_MESSAGES: ${values.deleteRequestMessages ? 'true' : 'false'}
 };`;
 
+  const onFormSubmit = async (data: BlacklistFeature) => {
+    await onSubmit(JSON.stringify(data));
+    reset(data);
+  };
+
   return {
     canSave: formState.isDirty,
     reset: () => reset(),
-    onSubmit: handleSubmit((values) => onSubmit(JSON.stringify(values))),
+    onSubmit: handleSubmit(onFormSubmit),
     component: (
       <VStack spacing={4} align="stretch">
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>

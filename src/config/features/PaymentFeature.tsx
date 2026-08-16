@@ -1,11 +1,13 @@
 import { SimpleGrid, VStack } from '@chakra-ui/react';
 import { ChannelSelectForm } from '@/components/forms/ChannelSelect';
+import { InputForm } from '@/components/forms/InputForm';
 import { SwitchFieldForm } from '@/components/forms/SwitchField';
 import { useForm } from 'react-hook-form';
 import { UseFormRender, UseFormRenderResult } from '@/config/types';
 import { PaymentFeature } from '@/config/types/custom-types';
 import { ConfigExportCard } from '@/components/feature/ConfigExportCard';
 import { useRouter } from 'next/router';
+import { useEffect } from 'react';
 
 export const usePaymentFeature: UseFormRender<PaymentFeature> = (
   initial,
@@ -14,95 +16,102 @@ export const usePaymentFeature: UseFormRender<PaymentFeature> = (
   const guild = useRouter().query.guild as string;
   const { control, handleSubmit, reset, formState, watch } = useForm<PaymentFeature>({
     defaultValues: {
-      paymentChannelId: initial?.paymentChannelId ?? '',
-      acceptVodafoneCash: initial?.acceptVodafoneCash ?? true,
-      acceptInstapay: initial?.acceptInstapay ?? true,
-      acceptBinance: initial?.acceptBinance ?? true,
-      acceptPaypal: initial?.acceptPaypal ?? true,
-      acceptUsdt: initial?.acceptUsdt ?? true,
-      autoPin: initial?.autoPin ?? true,
+      vodafoneCashNumber: initial?.vodafoneCashNumber ?? '',
+      instapayUsername: initial?.instapayUsername ?? '',
+      paypalEmail: initial?.paypalEmail ?? '',
+      binanceId: initial?.binanceId ?? '',
+      receiptLogChannelId: initial?.receiptLogChannelId ?? '',
+      enableAutoConfirm: initial?.enableAutoConfirm ?? false,
     },
   });
 
+  useEffect(() => {
+    if (initial) {
+      reset({
+        vodafoneCashNumber: initial.vodafoneCashNumber ?? '',
+        instapayUsername: initial.instapayUsername ?? '',
+        paypalEmail: initial.paypalEmail ?? '',
+        binanceId: initial.binanceId ?? '',
+        receiptLogChannelId: initial.receiptLogChannelId ?? '',
+        enableAutoConfirm: initial.enableAutoConfirm ?? false,
+      });
+    }
+  }, [initial, reset]);
+
   const values = watch();
 
-  const exportText = `// MG3 Payment Methods Configuration for Guild: ${guild || 'GUILD_ID'}
+  const exportText = `// MG3 Store Payment Gateway Configuration for Guild: ${guild || 'GUILD_ID'}
 module.exports = {
-  PAYMENT_CHANNEL_ID: '${values.paymentChannelId || ''}',
-  ACCEPTED_METHODS: {
-    VODAFONE_CASH: ${values.acceptVodafoneCash ? 'true' : 'false'},
-    INSTAPAY: ${values.acceptInstapay ? 'true' : 'false'},
-    BINANCE: ${values.acceptBinance ? 'true' : 'false'},
-    PAYPAL: ${values.acceptPaypal ? 'true' : 'false'},
-    USDT: ${values.acceptUsdt ? 'true' : 'false'}
-  },
-  AUTO_PIN_PANEL: ${values.autoPin ? 'true' : 'false'}
+  VODAFONE_CASH_NUMBER: '${values.vodafoneCashNumber || ''}',
+  INSTAPAY_USERNAME: '${values.instapayUsername || ''}',
+  PAYPAL_EMAIL: '${values.paypalEmail || ''}',
+  BINANCE_PAY_ID: '${values.binanceId || ''}',
+  PAYMENT_RECEIPTS_LOG_CHANNEL_ID: '${values.receiptLogChannelId || ''}',
+  AUTO_CONFIRM_ORDERS: ${values.enableAutoConfirm ? 'true' : 'false'}
 };`;
+
+  const onFormSubmit = async (data: PaymentFeature) => {
+    await onSubmit(JSON.stringify(data));
+    reset(data);
+  };
 
   return {
     canSave: formState.isDirty,
     reset: () => reset(),
-    onSubmit: handleSubmit((values) => onSubmit(JSON.stringify(values))),
+    onSubmit: handleSubmit(onFormSubmit),
     component: (
       <VStack spacing={4} align="stretch">
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
-          <ChannelSelectForm
+          <InputForm
             control={{
-              label: 'Payment Channel',
-              description: 'Target channel where the /payment panel embed is sent.',
+              label: 'Vodafone Cash Number',
+              description: 'Local Egyptian wallet number for cash deposits.',
             }}
-            controller={{ control, name: 'paymentChannelId' }}
+            controller={{ control, name: 'vodafoneCashNumber' }}
           />
-          <SwitchFieldForm
+          <InputForm
             control={{
-              label: 'Auto-Pin Panel',
-              description: 'Automatically pin the payment methods embed in the channel.',
+              label: 'Instapay IPA Address / Username',
+              description: 'Instapay Egyptian banking transfer address.',
             }}
-            controller={{ control, name: 'autoPin' }}
+            controller={{ control, name: 'instapayUsername' }}
+          />
+          <InputForm
+            control={{
+              label: 'PayPal Business Email',
+              description: 'International payment address.',
+            }}
+            controller={{ control, name: 'paypalEmail' }}
+          />
+          <InputForm
+            control={{
+              label: 'Binance Pay ID / USDT Address',
+              description: 'Cryptocurrency payment address.',
+            }}
+            controller={{ control, name: 'binanceId' }}
           />
         </SimpleGrid>
 
-        <SimpleGrid columns={{ base: 1, md: 3 }} gap={4}>
-          <SwitchFieldForm
+        <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+          <ChannelSelectForm
             control={{
-              label: 'Vodafone Cash',
-              description: 'Show Vodafone Cash in payment panel.',
+              label: 'Payment Receipt Logs Channel',
+              description: 'Channel where transaction transfer receipts are sent for admin review.',
             }}
-            controller={{ control, name: 'acceptVodafoneCash' }}
+            controller={{ control, name: 'receiptLogChannelId' }}
           />
           <SwitchFieldForm
             control={{
-              label: 'InstaPay',
-              description: 'Show InstaPay in payment panel.',
+              label: 'Auto-Confirm Verified Receipts',
+              description: 'Automatically confirm order completion upon valid transfer verification.',
             }}
-            controller={{ control, name: 'acceptInstapay' }}
-          />
-          <SwitchFieldForm
-            control={{
-              label: 'Binance Pay',
-              description: 'Show Binance in payment panel.',
-            }}
-            controller={{ control, name: 'acceptBinance' }}
-          />
-          <SwitchFieldForm
-            control={{
-              label: 'PayPal',
-              description: 'Show PayPal in payment panel.',
-            }}
-            controller={{ control, name: 'acceptPaypal' }}
-          />
-          <SwitchFieldForm
-            control={{
-              label: 'USDT (Crypto)',
-              description: 'Show USDT in payment panel.',
-            }}
-            controller={{ control, name: 'acceptUsdt' }}
+            controller={{ control, name: 'enableAutoConfirm' }}
           />
         </SimpleGrid>
 
         <ConfigExportCard
-          title="Export Payment Configuration"
-          description="Guild-specific payment channel and methods settings."
+          title="Export Payment Gateway Configuration"
+          description="Guild-specific store checkout gateways."
           configText={exportText}
         />
       </VStack>

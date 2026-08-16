@@ -51,7 +51,12 @@ export type ServerLogsFeature = {
 
 // 3. Welcome & Quick Links
 export type WelcomeFeature = {
+  channelId?: string;
   welcomeChannelId?: string;
+  message?: string;
+  autoRoleId?: string;
+  enableImage?: boolean;
+  enableDm?: boolean;
   welcomeBannerUrl?: string;
   rulesChannelId?: string;
   ticketChannelId?: string;
@@ -79,27 +84,42 @@ export type BlacklistFeature = {
 
 // 6. Suggestions
 export type SuggestionsFeature = {
+  channelId?: string;
   suggestionsChannelId?: string;
   suggestionsLogChannelId?: string;
   staffRoleId?: string;
+  enableThreads?: boolean;
+  enableReactions?: boolean;
 };
 
 // 7. Feedback
 export type FeedbackFeature = {
+  channelId?: string;
   feedbackChannelId?: string;
   bannerUrl?: string;
+  enableRatingStars?: boolean;
+  enableComments?: boolean;
 };
 
 // 8. Marketing Requests
 export type MarketingRequestsFeature = {
+  requestChannelId?: string;
+  logChannelId?: string;
   marketingRoleId?: string;
+  leaderRoleId?: string;
   marketingLeaderRoleId?: string;
   logDoneChannelId?: string;
   logDeleteChannelId?: string;
 };
 
+export type MarketingFeature = MarketingRequestsFeature;
+
 // 9. Reaction Roles
 export type ReactionRolesFeature = {
+  channelId?: string;
+  messageId?: string;
+  roleId?: string;
+  emoji?: string;
   reactionRoleChannelId?: string;
   arcRaidersRoleId?: string;
   overwatchRoleId?: string;
@@ -114,12 +134,21 @@ export type ReactionRolesFeature = {
 // 10. Say / Announcements
 export type SayFeature = {
   defaultChannelId?: string;
+  allowedRoleId?: string;
+  enableEmbeds?: boolean;
+  logChannelId?: string;
   buyButtonUrl?: string;
   otherPaymentButtonUrl?: string;
 };
 
 // 11. Payment Methods
 export type PaymentFeature = {
+  vodafoneCashNumber?: string;
+  instapayUsername?: string;
+  paypalEmail?: string;
+  binanceId?: string;
+  receiptLogChannelId?: string;
+  enableAutoConfirm?: boolean;
   paymentChannelId?: string;
   acceptVodafoneCash?: boolean;
   acceptInstapay?: boolean;

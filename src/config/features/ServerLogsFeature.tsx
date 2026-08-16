@@ -6,6 +6,7 @@ import { UseFormRender, UseFormRenderResult } from '@/config/types';
 import { ServerLogsFeature } from '@/config/types/custom-types';
 import { ConfigExportCard } from '@/components/feature/ConfigExportCard';
 import { useRouter } from 'next/router';
+import { useEffect } from 'react';
 
 export const useServerLogsFeature: UseFormRender<ServerLogsFeature> = (
   initial,
@@ -26,6 +27,22 @@ export const useServerLogsFeature: UseFormRender<ServerLogsFeature> = (
     },
   });
 
+  useEffect(() => {
+    if (initial) {
+      reset({
+        memberJoinChannel: initial.memberJoinChannel ?? '',
+        memberLeftChannel: initial.memberLeftChannel ?? '',
+        messageDeleteChannel: initial.messageDeleteChannel ?? '',
+        messageEditChannel: initial.messageEditChannel ?? '',
+        roleEventsChannel: initial.roleEventsChannel ?? '',
+        channelEventsChannel: initial.channelEventsChannel ?? '',
+        voiceStateChannel: initial.voiceStateChannel ?? '',
+        memberModChannel: initial.memberModChannel ?? '',
+        autoJoinRoleId: initial.autoJoinRoleId ?? '',
+      });
+    }
+  }, [initial, reset]);
+
   const values = watch();
 
   const exportText = `// MG3 Server Logs Configuration for Guild: ${guild || 'GUILD_ID'}
@@ -41,10 +58,15 @@ module.exports = {
   AUTO_JOIN_ROLE_ID: '${values.autoJoinRoleId || ''}'
 };`;
 
+  const onFormSubmit = async (data: ServerLogsFeature) => {
+    await onSubmit(JSON.stringify(data));
+    reset(data);
+  };
+
   return {
     canSave: formState.isDirty,
     reset: () => reset(),
-    onSubmit: handleSubmit((values) => onSubmit(JSON.stringify(values))),
+    onSubmit: handleSubmit(onFormSubmit),
     component: (
       <VStack spacing={4} align="stretch">
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>

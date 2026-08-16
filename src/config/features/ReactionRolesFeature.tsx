@@ -1,11 +1,13 @@
 import { SimpleGrid, VStack } from '@chakra-ui/react';
 import { ChannelSelectForm } from '@/components/forms/ChannelSelect';
 import { RoleSelectForm } from '@/components/forms/RoleSelect';
+import { InputForm } from '@/components/forms/InputForm';
 import { useForm } from 'react-hook-form';
 import { UseFormRender, UseFormRenderResult } from '@/config/types';
 import { ReactionRolesFeature } from '@/config/types/custom-types';
 import { ConfigExportCard } from '@/components/feature/ConfigExportCard';
 import { useRouter } from 'next/router';
+import { useEffect } from 'react';
 
 export const useReactionRolesFeature: UseFormRender<ReactionRolesFeature> = (
   initial,
@@ -14,110 +16,82 @@ export const useReactionRolesFeature: UseFormRender<ReactionRolesFeature> = (
   const guild = useRouter().query.guild as string;
   const { control, handleSubmit, reset, formState, watch } = useForm<ReactionRolesFeature>({
     defaultValues: {
-      reactionRoleChannelId: initial?.reactionRoleChannelId ?? '',
-      arcRaidersRoleId: initial?.arcRaidersRoleId ?? '',
-      overwatchRoleId: initial?.overwatchRoleId ?? '',
-      rocketLeagueRoleId: initial?.rocketLeagueRoleId ?? '',
-      marvelRivalsRoleId: initial?.marvelRivalsRoleId ?? '',
-      valorantRoleId: initial?.valorantRoleId ?? '',
-      codRoleId: initial?.codRoleId ?? '',
-      fcRoleId: initial?.fcRoleId ?? '',
-      fivemRoleId: initial?.fivemRoleId ?? '',
+      channelId: initial?.channelId ?? '',
+      messageId: initial?.messageId ?? '',
+      roleId: initial?.roleId ?? '',
+      emoji: initial?.emoji ?? '⭐',
     },
   });
 
+  useEffect(() => {
+    if (initial) {
+      reset({
+        channelId: initial.channelId ?? '',
+        messageId: initial.messageId ?? '',
+        roleId: initial.roleId ?? '',
+        emoji: initial.emoji ?? '⭐',
+      });
+    }
+  }, [initial, reset]);
+
   const values = watch();
 
-  const exportText = `// MG3 Reaction Game Roles for Guild: ${guild || 'GUILD_ID'}
+  const exportText = `// MG3 Reaction Roles Configuration for Guild: ${guild || 'GUILD_ID'}
 module.exports = {
-  REACTION_ROLE_CHANNEL_ID: '${values.reactionRoleChannelId || ''}',
-  REACTION_ROLES: [
-    { emojiName: 'MG3_ARC_Raiders', roleId: '${values.arcRaidersRoleId || ''}' },
-    { emojiName: 'MG3_overwatch', roleId: '${values.overwatchRoleId || ''}' },
-    { emojiName: 'MG3_Rocket_League', roleId: '${values.rocketLeagueRoleId || ''}' },
-    { emojiName: 'MG3_MARVL_RIVELS', roleId: '${values.marvelRivalsRoleId || ''}' },
-    { emojiName: 'MG3_VALORANT', roleId: '${values.valorantRoleId || ''}' },
-    { emojiName: 'MG3_COD', roleId: '${values.codRoleId || ''}' },
-    { emojiName: 'MG3_FC', roleId: '${values.fcRoleId || ''}' },
-    { emojiName: 'MG3_FIVEAM', roleId: '${values.fivemRoleId || ''}' }
-  ]
+  REACTION_ROLES_CHANNEL_ID: '${values.channelId || ''}',
+  REACTION_MESSAGE_ID: '${values.messageId || ''}',
+  REACTION_ROLE_ID: '${values.roleId || ''}',
+  REACTION_EMOJI: '${values.emoji || '⭐'}'
 };`;
+
+  const onFormSubmit = async (data: ReactionRolesFeature) => {
+    await onSubmit(JSON.stringify(data));
+    reset(data);
+  };
 
   return {
     canSave: formState.isDirty,
     reset: () => reset(),
-    onSubmit: handleSubmit((values) => onSubmit(JSON.stringify(values))),
+    onSubmit: handleSubmit(onFormSubmit),
     component: (
       <VStack spacing={4} align="stretch">
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
           <ChannelSelectForm
             control={{
               label: 'Reaction Roles Channel',
-              description: 'Channel where the game roles embed message and reactions are posted.',
+              description: 'Channel containing the reaction role message embed.',
             }}
-            controller={{ control, name: 'reactionRoleChannelId' }}
+            controller={{ control, name: 'channelId' }}
           />
           <RoleSelectForm
             control={{
-              label: 'ARC Raiders Role',
-              description: 'Role assigned for ARC Raiders reaction.',
+              label: 'Assigned Role',
+              description: 'Role awarded or revoked upon clicking reaction emoji.',
             }}
-            controller={{ control, name: 'arcRaidersRoleId' }}
+            controller={{ control, name: 'roleId' }}
           />
-          <RoleSelectForm
+        </SimpleGrid>
+
+        <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+          <InputForm
             control={{
-              label: 'Overwatch 2 Role',
-              description: 'Role assigned for Overwatch reaction.',
+              label: 'Discord Message ID',
+              description: 'ID of the Discord message to attach reactions to.',
             }}
-            controller={{ control, name: 'overwatchRoleId' }}
+            controller={{ control, name: 'messageId' }}
           />
-          <RoleSelectForm
+          <InputForm
             control={{
-              label: 'Rocket League Role',
-              description: 'Role assigned for Rocket League reaction.',
+              label: 'Emoji',
+              description: 'Unicode emoji (e.g. ⭐, 🎮) or custom Discord emoji ID.',
             }}
-            controller={{ control, name: 'rocketLeagueRoleId' }}
-          />
-          <RoleSelectForm
-            control={{
-              label: 'Marvel Rivals Role',
-              description: 'Role assigned for Marvel Rivals reaction.',
-            }}
-            controller={{ control, name: 'marvelRivalsRoleId' }}
-          />
-          <RoleSelectForm
-            control={{
-              label: 'Valorant Role',
-              description: 'Role assigned for Valorant reaction.',
-            }}
-            controller={{ control, name: 'valorantRoleId' }}
-          />
-          <RoleSelectForm
-            control={{
-              label: 'Call of Duty (COD) Role',
-              description: 'Role assigned for Call of Duty reaction.',
-            }}
-            controller={{ control, name: 'codRoleId' }}
-          />
-          <RoleSelectForm
-            control={{
-              label: 'EA Sports FC Role',
-              description: 'Role assigned for FC reaction.',
-            }}
-            controller={{ control, name: 'fcRoleId' }}
-          />
-          <RoleSelectForm
-            control={{
-              label: 'FiveM / GTA V Role',
-              description: 'Role assigned for FiveM reaction.',
-            }}
-            controller={{ control, name: 'fivemRoleId' }}
+            controller={{ control, name: 'emoji' }}
           />
         </SimpleGrid>
 
         <ConfigExportCard
           title="Export Reaction Roles Configuration"
-          description="Guild-specific 8 game reaction roles mapping."
+          description="Guild-specific message reaction role binding."
           configText={exportText}
         />
       </VStack>

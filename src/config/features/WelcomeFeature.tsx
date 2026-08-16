@@ -1,5 +1,6 @@
 import { SimpleGrid, VStack } from '@chakra-ui/react';
 import { ChannelSelectForm } from '@/components/forms/ChannelSelect';
+import { RoleSelectForm } from '@/components/forms/RoleSelect';
 import { InputForm } from '@/components/forms/InputForm';
 import { SwitchFieldForm } from '@/components/forms/SwitchField';
 import { useForm } from 'react-hook-form';
@@ -7,6 +8,7 @@ import { UseFormRender, UseFormRenderResult } from '@/config/types';
 import { WelcomeFeature } from '@/config/types/custom-types';
 import { ConfigExportCard } from '@/components/feature/ConfigExportCard';
 import { useRouter } from 'next/router';
+import { useEffect } from 'react';
 
 export const useWelcomeFeature: UseFormRender<WelcomeFeature> = (
   initial,
@@ -15,39 +17,46 @@ export const useWelcomeFeature: UseFormRender<WelcomeFeature> = (
   const guild = useRouter().query.guild as string;
   const { control, handleSubmit, reset, formState, watch } = useForm<WelcomeFeature>({
     defaultValues: {
-      welcomeChannelId: initial?.welcomeChannelId ?? '',
-      welcomeBannerUrl: initial?.welcomeBannerUrl ?? '',
-      rulesChannelId: initial?.rulesChannelId ?? '',
-      ticketChannelId: initial?.ticketChannelId ?? '',
-      feedbackChannelId: initial?.feedbackChannelId ?? '',
-      paymentChannelId: initial?.paymentChannelId ?? '',
-      roleGamesChannelId: initial?.roleGamesChannelId ?? '',
-      pingInviter: initial?.pingInviter ?? false,
-      showQuickLinks: initial?.showQuickLinks ?? true,
-      showServerInfo: initial?.showServerInfo ?? true,
+      channelId: initial?.channelId ?? '',
+      message: initial?.message ?? 'Welcome to {server}, {user}!',
+      autoRoleId: initial?.autoRoleId ?? '',
+      enableImage: initial?.enableImage ?? true,
+      enableDm: initial?.enableDm ?? false,
     },
   });
 
+  useEffect(() => {
+    if (initial) {
+      reset({
+        channelId: initial.channelId ?? '',
+        message: initial.message ?? 'Welcome to {server}, {user}!',
+        autoRoleId: initial.autoRoleId ?? '',
+        enableImage: initial.enableImage ?? true,
+        enableDm: initial.enableDm ?? false,
+      });
+    }
+  }, [initial, reset]);
+
   const values = watch();
 
-  const exportText = `// MG3 Welcome Configuration in config-guilds.js for: ${guild || 'GUILD_ID'}
-'${guild || 'GUILD_ID'}': {
-  WELCOME_CHANNEL_ID: '${values.welcomeChannelId || ''}',
-  WELCOME_BANNER_URL: '${values.welcomeBannerUrl || 'https://i.imgur.com/dD187cK.png'}',
-  RULES_CHANNEL_ID: '${values.rulesChannelId || ''}',
-  TICKET_CHANNEL_ID: '${values.ticketChannelId || ''}',
-  FEEDBACK_CHANNEL_ID: '${values.feedbackChannelId || ''}',
-  PAYMENT_METHODS_CHANNEL_ID: '${values.paymentChannelId || ''}',
-  ROLE_GAMES_CHANNEL_ID: '${values.roleGamesChannelId || ''}',
-  PING_INVITER: ${values.pingInviter ? 'true' : 'false'},
-  show_quick_links: ${values.showQuickLinks ? 'true' : 'false'},
-  show_server_info: ${values.showServerInfo ? 'true' : 'false'}
-}`;
+  const exportText = `// MG3 Welcome Configuration for Guild: ${guild || 'GUILD_ID'}
+module.exports = {
+  WELCOME_CHANNEL_ID: '${values.channelId || ''}',
+  WELCOME_MESSAGE: '${values.message || ''}',
+  AUTO_ROLE_ID: '${values.autoRoleId || ''}',
+  ENABLE_WELCOME_IMAGE: ${values.enableImage ? 'true' : 'false'},
+  ENABLE_WELCOME_DM: ${values.enableDm ? 'true' : 'false'}
+};`;
+
+  const onFormSubmit = async (data: WelcomeFeature) => {
+    await onSubmit(JSON.stringify(data));
+    reset(data);
+  };
 
   return {
     canSave: formState.isDirty,
     reset: () => reset(),
-    onSubmit: handleSubmit((values) => onSubmit(JSON.stringify(values))),
+    onSubmit: handleSubmit(onFormSubmit),
     component: (
       <VStack spacing={4} align="stretch">
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
@@ -56,79 +65,45 @@ export const useWelcomeFeature: UseFormRender<WelcomeFeature> = (
               label: 'Welcome Channel',
               description: 'Channel where welcome messages are sent.',
             }}
-            controller={{ control, name: 'welcomeChannelId' }}
+            controller={{ control, name: 'channelId' }}
           />
-          <InputForm
+          <RoleSelectForm
             control={{
-              label: 'Welcome Banner URL',
-              description: 'Image / GIF URL displayed in the welcome embed banner.',
+              label: 'Auto-Role',
+              description: 'Role given automatically to new members.',
             }}
-            controller={{ control, name: 'welcomeBannerUrl' }}
-          />
-          <ChannelSelectForm
-            control={{
-              label: 'Rules Channel',
-              description: 'Quick link channel for server rules.',
-            }}
-            controller={{ control, name: 'rulesChannelId' }}
-          />
-          <ChannelSelectForm
-            control={{
-              label: 'Tickets Channel',
-              description: 'Quick link channel to open support tickets.',
-            }}
-            controller={{ control, name: 'ticketChannelId' }}
-          />
-          <ChannelSelectForm
-            control={{
-              label: 'Feedback Channel',
-              description: 'Quick link channel for customer reviews.',
-            }}
-            controller={{ control, name: 'feedbackChannelId' }}
-          />
-          <ChannelSelectForm
-            control={{
-              label: 'Payment Methods Channel',
-              description: 'Quick link channel for payment options.',
-            }}
-            controller={{ control, name: 'paymentChannelId' }}
-          />
-          <ChannelSelectForm
-            control={{
-              label: 'Game Roles Channel',
-              description: 'Quick link channel for game reaction roles.',
-            }}
-            controller={{ control, name: 'roleGamesChannelId' }}
+            controller={{ control, name: 'autoRoleId' }}
           />
         </SimpleGrid>
 
-        <SimpleGrid columns={{ base: 1, md: 3 }} gap={4}>
+        <InputForm
+          control={{
+            label: 'Welcome Message Template',
+            description: 'Supported tags: {user}, {server}, {members}',
+          }}
+          controller={{ control, name: 'message' }}
+        />
+
+        <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
           <SwitchFieldForm
             control={{
-              label: 'Ping Inviter',
-              description: 'Tag the inviter when a new member joins.',
+              label: 'Welcome Card Banner Image',
+              description: 'Generate dynamic canvas welcome card image.',
             }}
-            controller={{ control, name: 'pingInviter' }}
+            controller={{ control, name: 'enableImage' }}
           />
           <SwitchFieldForm
             control={{
-              label: 'Show Quick Links',
-              description: 'Include the Quick Links section in welcome embed.',
+              label: 'Send Welcome DM',
+              description: 'Send direct message to new member upon joining.',
             }}
-            controller={{ control, name: 'showQuickLinks' }}
-          />
-          <SwitchFieldForm
-            control={{
-              label: 'Show Server Info',
-              description: 'Show member count and inviter details.',
-            }}
-            controller={{ control, name: 'showServerInfo' }}
+            controller={{ control, name: 'enableDm' }}
           />
         </SimpleGrid>
 
         <ConfigExportCard
           title="Export Welcome Configuration"
-          description="Guild configuration block for config-guilds.js."
+          description="Guild-specific welcome system configuration snippet."
           configText={exportText}
         />
       </VStack>

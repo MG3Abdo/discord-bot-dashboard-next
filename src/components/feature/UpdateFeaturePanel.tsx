@@ -33,12 +33,35 @@ export function UpdateFeaturePanel({
     }
   }, [guildInfoQuery.data?.enabledFeatures, featureId]);
 
-  const result = config.useRender(feature, (data) => {
-    return mutation.mutateAsync({
-      guild,
-      feature: featureId,
-      options: data,
-    });
+  const result = config.useRender(feature, async (data) => {
+    try {
+      const res = await mutation.mutateAsync({
+        guild,
+        feature: featureId,
+        options: data,
+      });
+
+      toast({
+        title: 'Changes Saved',
+        description: `${config.name} configuration saved successfully.`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+        position: 'bottom-right',
+      });
+
+      return res;
+    } catch (err: any) {
+      toast({
+        title: 'Save Failed',
+        description: err?.message || 'Could not save configuration.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+        position: 'bottom-right',
+      });
+      throw err;
+    }
   });
 
   const onToggle = async () => {
@@ -74,7 +97,7 @@ export function UpdateFeaturePanel({
   };
 
   return (
-    <Flex as="form" direction="column" gap={5} w="full" h="full">
+    <Flex direction="column" gap={5} w="full" h="full">
       <Flex direction={{ base: 'column', md: 'row' }} mx={{ '3sm': 5 }} justify="space-between" align={{ md: 'center' }}>
         <Box>
           <Flex align="center" gap={3}>
@@ -153,6 +176,22 @@ function Savebar({
   const t = view.useTranslations();
   const breakpoint = '3sm';
 
+  const handleSave = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await onSubmit();
+    } catch (err) {
+      console.error('Save failed:', err);
+    }
+  };
+
+  const handleDiscard = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    reset?.();
+  };
+
   return (
     <Flex
       as={SlideFade}
@@ -184,16 +223,16 @@ function Savebar({
       <Spacer />
       <ButtonGroup isDisabled={isLoading} size={{ base: 'sm', [breakpoint]: 'md' }}>
         <Button
-          type="submit"
+          type="button"
           variant="action"
           rounded="full"
           leftIcon={<IoSave />}
           isLoading={isLoading}
-          onClick={onSubmit}
+          onClick={handleSave}
         >
           {t.bn.save}
         </Button>
-        <Button rounded="full" onClick={reset}>
+        <Button type="button" rounded="full" onClick={handleDiscard}>
           {t.bn.discard}
         </Button>
       </ButtonGroup>
