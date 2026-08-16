@@ -1,10 +1,10 @@
-import { Center, Flex, Heading, SimpleGrid, Text, Button, Icon } from '@chakra-ui/react';
+import { Center, Flex, Heading, SimpleGrid, Text, Button, Icon, HStack } from '@chakra-ui/react';
 import { LoadingPanel } from '@/components/panel/LoadingPanel';
 import { QueryStatus } from '@/components/panel/QueryPanel';
 import { config } from '@/config/common';
 import { guild as view } from '@/config/translations/guild';
 import { BsMailbox } from 'react-icons/bs';
-import { FaRobot } from 'react-icons/fa';
+import { FaRobot, FaRedo } from 'react-icons/fa';
 import { useGuildInfoQuery } from '@/api/hooks';
 import { useRouter } from 'next/router';
 import { getFeatures } from '@/utils/common';
@@ -24,7 +24,7 @@ const GuildPage: NextPageWithLayout = () => {
       {query.data != null ? (
         <GuildPanel guild={guild} info={query.data} />
       ) : (
-        <NotJoined guild={guild} />
+        <NotJoined guild={guild} onRefresh={() => query.refetch()} />
       )}
     </QueryStatus>
   );
@@ -44,7 +44,7 @@ function GuildPanel({ guild: id, info }: { guild: string; info: CustomGuildInfo 
               key={feature.id}
               guild={id}
               feature={feature}
-              enabled={info.enabledFeatures.includes(feature.id)}
+              enabled={info.enabledFeatures?.includes(feature.id) ?? false}
             />
           ))}
         </SimpleGrid>
@@ -53,28 +53,38 @@ function GuildPanel({ guild: id, info }: { guild: string; info: CustomGuildInfo 
   );
 }
 
-function NotJoined({ guild }: { guild: string }) {
+function NotJoined({ guild, onRefresh }: { guild: string; onRefresh: () => void }) {
   const t = view.useTranslations();
 
   return (
-    <Center flexDirection="column" gap={3} h="full" p={5}>
-      <Icon as={BsMailbox} w={50} h={50} />
+    <Center flexDirection="column" gap={4} h="full" minH="350px" p={5}>
+      <Icon as={BsMailbox} w={50} h={50} color="Brand" />
       <Text fontSize="xl" fontWeight="600">
         {t.error['not found']}
       </Text>
-      <Text textAlign="center" color="TextSecondary">
+      <Text textAlign="center" color="TextSecondary" maxW="420px">
         {t.error['not found description']}
       </Text>
-      <Button
-        variant="action"
-        leftIcon={<FaRobot />}
-        px={6}
-        as="a"
-        href={`${config.inviteUrl}&guild_id=${guild}`}
-        target="_blank"
-      >
-        {t.bn.invite}
-      </Button>
+      <HStack spacing={3} mt={2}>
+        <Button
+          variant="action"
+          leftIcon={<FaRobot />}
+          px={6}
+          as="a"
+          href={`${config.inviteUrl}&guild_id=${guild}`}
+          target="_blank"
+        >
+          {t.bn.invite}
+        </Button>
+        <Button
+          variant="primary"
+          leftIcon={<FaRedo />}
+          onClick={onRefresh}
+          px={5}
+        >
+          Check Again
+        </Button>
+      </HStack>
     </Center>
   );
 }
