@@ -13,7 +13,7 @@ import { useController } from 'react-hook-form';
 import { Form } from './Form';
 import { ControlledInput } from './types';
 
-export const SwitchFieldForm: ControlledInput<{}, boolean> = ({
+export const SwitchFieldForm: ControlledInput<{}, boolean | undefined> = ({
   control,
   controller,
   ...props
@@ -34,7 +34,7 @@ export const SwitchFieldForm: ControlledInput<{}, boolean> = ({
             {control.description}
           </Text>
         </Box>
-        <Switch variant="main" size="md" isChecked={value} {...field} {...props} />
+        <Switch variant="main" size="md" isChecked={Boolean(value)} {...field} {...props} />
       </Flex>
       <FormErrorMessage>{fieldState.error?.message}</FormErrorMessage>
     </Form>

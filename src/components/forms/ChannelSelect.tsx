@@ -106,7 +106,7 @@ export const ChannelSelect = forwardRef<SelectInstance<Option, false>, Props>(
 
 ChannelSelect.displayName = 'ChannelSelect';
 
-export const ChannelSelectForm: ControlledInput<Omit<Props, 'value' | 'onChange'>> = ({
+export const ChannelSelectForm: ControlledInput<Omit<Props, 'value' | 'onChange'>, string | undefined> = ({
   control,
   controller,
   ...props

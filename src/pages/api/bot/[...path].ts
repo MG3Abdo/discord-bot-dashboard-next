@@ -15,6 +15,24 @@ const BOT_TOKEN =
 
 const DASHBOARD_API_TOKEN = process.env.DASHBOARD_API_TOKEN || '';
 
+const ALL_MG3_FEATURES = [
+  'tickets',
+  'server-logs',
+  'welcome',
+  'invite-log',
+  'blacklist',
+  'suggestions',
+  'feedback',
+  'marketing-requests',
+  'reaction-roles',
+  'say',
+  'payment',
+];
+
+// In-memory Guild Feature Store (isolated per guildId)
+// guildId -> featureId -> settings
+const guildFeatureStore: Record<string, Record<string, any>> = {};
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = getServerSession(req);
 
@@ -68,127 +86,174 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json(data);
       }
     } catch (err: any) {
-      console.warn('Could not reach external Bot API, falling back to Discord Bot API / OAuth:', err?.message || err);
+      console.warn('Could not reach external Bot API, falling back to Next.js handler:', err?.message || err);
     }
   }
 
   // =========================================================================
-  // 2. Direct Discord API with Bot Token (If configured)
+  // 2. Guild & Features Handlers
   // =========================================================================
   if (subpath.startsWith('guild/') || subpath.startsWith('guilds/')) {
     const parts = subpath.split('/');
     const guildId = parts[1];
     const subResource = parts[2]; // e.g. 'roles', 'channels', 'features'
+    const targetFeature = parts[3]; // e.g. 'payment', 'tickets'
 
-    if (BOT_TOKEN) {
-      try {
-        const discordRes = await fetch(`${API_ENDPOINT}/guilds/${guildId}`, {
-          headers: {
-            Authorization: `Bot ${BOT_TOKEN}`,
-          },
-        });
+    // Initialize store for guild if needed
+    if (!guildFeatureStore[guildId]) {
+      guildFeatureStore[guildId] = {};
+    }
 
-        if (discordRes.ok) {
-          const guildData = await discordRes.json();
-
-          // If requesting specific sub-resources
-          if (subResource === 'roles') {
-            const rolesRes = await fetch(`${API_ENDPOINT}/guilds/${guildId}/roles`, {
-              headers: { Authorization: `Bot ${BOT_TOKEN}` },
-            });
-            if (rolesRes.ok) return res.status(200).json(await rolesRes.json());
-            return res.status(200).json(guildData.roles || []);
+    // -----------------------------------------------------------------------
+    // Roles Request: /guild/:id/roles
+    // -----------------------------------------------------------------------
+    if (subResource === 'roles') {
+      if (BOT_TOKEN) {
+        try {
+          const rolesRes = await fetch(`${API_ENDPOINT}/guilds/${guildId}/roles`, {
+            headers: { Authorization: `Bot ${BOT_TOKEN}` },
+          });
+          if (rolesRes.ok) {
+            const rolesData = await rolesRes.json();
+            return res.status(200).json(rolesData);
           }
+        } catch (e) {
+          console.warn('Error fetching roles with Bot Token:', e);
+        }
+      }
+      return res.status(200).json([]);
+    }
 
-          if (subResource === 'channels') {
-            const channelsRes = await fetch(`${API_ENDPOINT}/guilds/${guildId}/channels`, {
-              headers: { Authorization: `Bot ${BOT_TOKEN}` },
-            });
-            if (channelsRes.ok) return res.status(200).json(await channelsRes.json());
-            return res.status(200).json([]);
+    // -----------------------------------------------------------------------
+    // Channels Request: /guild/:id/channels
+    // -----------------------------------------------------------------------
+    if (subResource === 'channels') {
+      if (BOT_TOKEN) {
+        try {
+          const channelsRes = await fetch(`${API_ENDPOINT}/guilds/${guildId}/channels`, {
+            headers: { Authorization: `Bot ${BOT_TOKEN}` },
+          });
+          if (channelsRes.ok) {
+            const channelsData = await channelsRes.json();
+            return res.status(200).json(channelsData);
           }
+        } catch (e) {
+          console.warn('Error fetching channels with Bot Token:', e);
+        }
+      }
+      return res.status(200).json([]);
+    }
 
-          if (req.method === 'GET') {
+    // -----------------------------------------------------------------------
+    // Specific Feature Request: /guild/:id/features/:feature
+    // -----------------------------------------------------------------------
+    if (subResource === 'features' && targetFeature) {
+      if (req.method === 'GET') {
+        const saved = guildFeatureStore[guildId]?.[targetFeature] || {};
+        return res.status(200).json(saved);
+      }
+
+      if (req.method === 'POST' || req.method === 'PATCH') {
+        const bodyData = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+        guildFeatureStore[guildId][targetFeature] = {
+          ...(guildFeatureStore[guildId][targetFeature] || {}),
+          ...bodyData,
+        };
+        return res.status(200).json(guildFeatureStore[guildId][targetFeature]);
+      }
+
+      if (req.method === 'DELETE') {
+        delete guildFeatureStore[guildId][targetFeature];
+        return res.status(200).json({ success: true });
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // General Features Request: /guild/:id/features
+    // -----------------------------------------------------------------------
+    if (subResource === 'features') {
+      if (req.method === 'GET') {
+        return res.status(200).json(guildFeatureStore[guildId] || {});
+      }
+      return res.status(200).json({ success: true });
+    }
+
+    // -----------------------------------------------------------------------
+    // Guild Info Request: /guild/:id
+    // -----------------------------------------------------------------------
+    if (req.method === 'GET' && parts.length === 2) {
+      // Check via Bot Token first
+      if (BOT_TOKEN) {
+        try {
+          const discordRes = await fetch(`${API_ENDPOINT}/guilds/${guildId}`, {
+            headers: {
+              Authorization: `Bot ${BOT_TOKEN}`,
+            },
+          });
+
+          if (discordRes.ok) {
+            const guildData = await discordRes.json();
             return res.status(200).json({
               id: String(guildData.id),
               name: String(guildData.name),
               icon: guildData.icon,
               owner_id: guildData.owner_id,
-              enabledFeatures: ['welcome-message', 'reaction-role', 'meme', 'music', 'gaming'],
-              settings: {
-                welcome: { message: 'Welcome to our server!' },
-              },
+              enabledFeatures: ALL_MG3_FEATURES,
+              settings: guildFeatureStore[guildId] || {},
             });
+          } else if (discordRes.status === 404 || discordRes.status === 403) {
+            return res.status(404).json({ error: 'Bot not joined in this guild', guildId });
           }
-
-          if (req.method === 'POST' || req.method === 'PATCH' || req.method === 'DELETE') {
-            return res.status(200).json({ success: true });
-          }
-        } else if (discordRes.status === 404 || discordRes.status === 403) {
-          // Bot is definitively NOT in this guild on Discord
-          return res.status(404).json({ error: 'Bot not joined in this guild', guildId });
+        } catch (botErr) {
+          console.warn('Error querying Discord Bot API:', botErr);
         }
-      } catch (botErr) {
-        console.warn('Error querying Discord Bot API:', botErr);
       }
-    }
 
-    // =========================================================================
-    // 3. User OAuth Administrator Verification Fallback
-    // =========================================================================
-    try {
-      const userGuildsRes = await fetch(`${API_ENDPOINT}/users/@me/guilds`, {
-        headers: {
-          Authorization: `Bearer ${session.data.access_token}`,
-        },
-      });
+      // Check via User's OAuth Admin status
+      try {
+        const userGuildsRes = await fetch(`${API_ENDPOINT}/users/@me/guilds`, {
+          headers: {
+            Authorization: `Bearer ${session.data.access_token}`,
+          },
+        });
 
-      if (userGuildsRes.ok) {
-        const userGuilds: any[] = await userGuildsRes.json();
-        const matchedGuild = userGuilds.find((g) => String(g.id) === String(guildId));
+        if (userGuildsRes.ok) {
+          const userGuilds: any[] = await userGuildsRes.json();
+          const matchedGuild = userGuilds.find((g) => String(g.id) === String(guildId));
 
-        if (!matchedGuild) {
-          return res.status(404).json({ error: 'Guild not found in user account' });
-        }
+          if (!matchedGuild) {
+            return res.status(404).json({ error: 'Guild not found in user account' });
+          }
 
-        // Check Admin/Manage permissions
-        const isOwner = Boolean(matchedGuild.owner);
-        let canManage = isOwner;
-        try {
-          const perms = BigInt(matchedGuild.permissions || '0');
-          canManage = isOwner || (perms & BigInt(8)) === BigInt(8) || (perms & BigInt(32)) === BigInt(32);
-        } catch {
-          canManage = isOwner;
-        }
+          const isOwner = Boolean(matchedGuild.owner);
+          let canManage = isOwner;
+          try {
+            const perms = BigInt(matchedGuild.permissions || '0');
+            canManage = isOwner || (perms & BigInt(8)) === BigInt(8) || (perms & BigInt(32)) === BigInt(32);
+          } catch {
+            canManage = isOwner;
+          }
 
-        if (!canManage) {
-          return res.status(403).json({ error: 'Forbidden: Missing administrator permissions' });
-        }
-
-        // When user is confirmed Administrator/Owner and opened the management dashboard
-        if (req.method === 'GET') {
-          if (subResource === 'roles') return res.status(200).json([]);
-          if (subResource === 'channels') return res.status(200).json([]);
-          if (subResource === 'features') return res.status(200).json({});
+          if (!canManage) {
+            return res.status(403).json({ error: 'Forbidden: Missing administrator permissions' });
+          }
 
           return res.status(200).json({
             id: String(matchedGuild.id),
             name: String(matchedGuild.name),
             icon: matchedGuild.icon,
             owner: isOwner,
-            enabledFeatures: ['welcome-message', 'reaction-role', 'meme', 'music', 'gaming'],
-            settings: {
-              welcome: { message: 'Welcome to our server!' },
-            },
+            enabledFeatures: ALL_MG3_FEATURES,
+            settings: guildFeatureStore[guildId] || {},
           });
         }
-
-        if (req.method === 'POST' || req.method === 'PATCH' || req.method === 'DELETE') {
-          return res.status(200).json({ success: true });
-        }
+      } catch (oauthErr) {
+        console.error('Error verifying user guild access:', oauthErr);
       }
-    } catch (oauthErr) {
-      console.error('Error verifying user guild access:', oauthErr);
+    }
+
+    if (req.method === 'POST' || req.method === 'PATCH' || req.method === 'DELETE') {
+      return res.status(200).json({ success: true });
     }
   }
 

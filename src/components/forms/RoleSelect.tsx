@@ -60,7 +60,7 @@ export const RoleSelect = forwardRef<SelectInstance<Option, false>, Props>((prop
 
 RoleSelect.displayName = 'RolesSelect';
 
-export const RoleSelectForm: ControlledInput<Omit<Props, 'value' | 'onChange'>> = ({
+export const RoleSelectForm: ControlledInput<Omit<Props, 'value' | 'onChange'>, string | undefined> = ({
   control,
   controller,
   ...props

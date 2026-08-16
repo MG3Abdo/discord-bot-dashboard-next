@@ -1,18 +1,20 @@
 import { Input, InputProps } from '@chakra-ui/react';
-import { forwardRef } from 'react';
 import { FormCard } from './Form';
-import { WithControl } from './types';
+import { ControlledInput, WithControl } from './types';
+import { useController } from 'react-hook-form';
 
 export type InputFormProps = WithControl<InputProps>;
 
-export const InputForm = forwardRef<HTMLInputElement, InputFormProps>(
-  ({ control, ...props }, ref) => {
-    return (
-      <FormCard {...control}>
-        <Input variant="main" ref={ref} {...props} />
-      </FormCard>
-    );
-  }
-);
+export const InputForm: ControlledInput<InputProps, string | undefined> = ({
+  control,
+  controller,
+  ...props
+}) => {
+  const { fieldState, field } = useController(controller);
 
-InputForm.displayName = 'InputForm';
+  return (
+    <FormCard {...control} error={fieldState?.error?.message}>
+      <Input variant="main" {...field} value={field.value ?? ''} {...props} />
+    </FormCard>
+  );
+};

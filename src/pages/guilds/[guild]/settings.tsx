@@ -12,17 +12,14 @@ import { ChannelSelectForm } from '@/components/forms/ChannelSelect';
 const schema = z.object({
   beta: z.boolean(),
   role: z.string().optional(),
-  prefix: z.string().min(1).max(1),
+  prefix: z.string().min(1).max(5),
   channel: z.string().optional(),
 });
 
 type ExampleSettings = z.infer<typeof schema>;
 
-/**
- * Exmaple for using react-hook-form with built-in components
- */
 const GuildSettingsPage: NextPageWithLayout = () => {
-  const { watch, register, control, formState, handleSubmit } = useForm<ExampleSettings>({
+  const { watch, control, handleSubmit } = useForm<ExampleSettings>({
     resolver: zodResolver(schema),
     defaultValues: {
       beta: true,
@@ -31,7 +28,6 @@ const GuildSettingsPage: NextPageWithLayout = () => {
       channel: undefined,
     },
   });
-  const errors = formState.errors;
 
   return (
     <Flex direction="column">
@@ -62,7 +58,7 @@ const GuildSettingsPage: NextPageWithLayout = () => {
         <RoleSelectForm
           control={{
             label: 'Admin Role',
-            description: 'Roles that able to configure the discord bot',
+            description: 'Roles able to configure the bot',
           }}
           controller={{ control, name: 'role' }}
         />
@@ -70,10 +66,9 @@ const GuildSettingsPage: NextPageWithLayout = () => {
           control={{
             label: 'Command prefix',
             description: 'Change the default command prefix',
-            error: errors.prefix?.message,
           }}
+          controller={{ control, name: 'prefix' }}
           placeholder="/"
-          {...register('prefix')}
         />
         <ChannelSelectForm
           control={{

@@ -1,89 +1,100 @@
 import { Icon } from '@chakra-ui/react';
-import { BsMusicNoteBeamed } from 'react-icons/bs';
-import { FaGamepad } from 'react-icons/fa';
-import { IoHappy } from 'react-icons/io5';
-import { MdAddReaction, MdMessage } from 'react-icons/md';
+import {
+  BsTicketDetailed,
+  BsShieldCheck,
+  BsPersonPlus,
+} from 'react-icons/bs';
+import {
+  MdOutlineShoppingBag,
+  MdAddReaction,
+  MdCampaign,
+  MdPayment,
+  MdStarRate,
+  MdLightbulb,
+  MdBlock,
+  MdMessage,
+} from 'react-icons/md';
 import { FeaturesConfig } from './types';
-import { provider } from '@/config/translations/provider';
-import { createI18n } from '@/utils/i18n';
-import { useWelcomeMessageFeature } from './example/WelcomeMessageFeature';
-import { useMemeFeature } from './example/MemeFeature';
+import { useTicketsFeature } from './features/TicketsFeature';
+import { useServerLogsFeature } from './features/ServerLogsFeature';
+import { useWelcomeFeature } from './features/WelcomeFeature';
+import { useInviteLogFeature } from './features/InviteLogFeature';
+import { useBlacklistFeature } from './features/BlacklistFeature';
+import { useSuggestionsFeature } from './features/SuggestionsFeature';
+import { useFeedbackFeature } from './features/FeedbackFeature';
+import { useMarketingRequestsFeature } from './features/MarketingRequestsFeature';
+import { useReactionRolesFeature } from './features/ReactionRolesFeature';
+import { useSayFeature } from './features/SayFeature';
+import { usePaymentFeature } from './features/PaymentFeature';
 
 /**
- * Support i18n (Localization)
- */
-const { T } = createI18n(provider, {
-  en: {
-    music: 'Music Player',
-    'music description': 'Play music in Your Discord Server',
-    gaming: 'Gaming',
-    'gaming description': 'Enjoy playing games with your friends',
-    'reaction role': 'Reaction Role',
-    'reaction role description': 'Give user a role when clicking on a button',
-    memes: 'Memes Time',
-    'memes description': 'Send memes everyday',
-  },
-  cn: {
-    music: '音樂播放器',
-    'music description': '在您的 Discord 服務器中播放音樂',
-    gaming: '遊戲',
-    'gaming description': 'Enjoy playing games with your friends',
-    'reaction role': '反應角色',
-    'reaction role description': '單擊按鈕時為用戶賦予角色',
-    memes: '模因時間',
-    'memes description': '每天發送模因',
-  },
-});
-
-/**
- * Define information for each features
- *
- * There is an example:
+ * 11 Actual MG3 Bot Features Config
  */
 export const features: FeaturesConfig = {
-  music: {
-    name: <T text="music" />,
-    description: <T text="music description" />,
-    icon: <Icon as={BsMusicNoteBeamed} />,
-    useRender() {
-      return {
-        component: <></>,
-        onSubmit: () => {},
-      };
-    },
+  tickets: {
+    name: 'Tickets System',
+    description: 'Support tickets, categories, support roles, transcripts, and feedback.',
+    icon: <Icon as={BsTicketDetailed} />,
+    useRender: useTicketsFeature,
   },
-  'welcome-message': {
-    name: 'Welcome Message',
-    description: 'Send message when user joined the server',
+  'server-logs': {
+    name: 'Server Audit Logs',
+    description: '19-event audit logger (joins, leaves, bans, kicks, message deletes/edits, roles, voice, timeouts).',
+    icon: <Icon as={BsShieldCheck} />,
+    useRender: useServerLogsFeature,
+  },
+  welcome: {
+    name: 'Welcome & Quick Links',
+    description: 'Custom welcome message on join with invite detection, quick links embed, and server counter.',
     icon: <Icon as={MdMessage} />,
-    useRender: useWelcomeMessageFeature,
+    useRender: useWelcomeFeature,
   },
-  gaming: {
-    name: <T text="gaming" />,
-    description: <T text="gaming description" />,
-    icon: <Icon as={FaGamepad} />,
-    useRender() {
-      return {
-        component: <></>,
-        onSubmit: () => {},
-      };
-    },
+  'invite-log': {
+    name: 'Invite Logger',
+    description: 'Dedicated invite logger tracking who invited whom, total invites count, and account age.',
+    icon: <Icon as={BsPersonPlus} />,
+    useRender: useInviteLogFeature,
   },
-  'reaction-role': {
-    name: <T text="reaction role" />,
-    description: <T text="reaction role description" />,
+  blacklist: {
+    name: 'Blacklist Management',
+    description: 'Restrict blacklisted users from creating tickets and posting order requests.',
+    icon: <Icon as={MdBlock} />,
+    useRender: useBlacklistFeature,
+  },
+  suggestions: {
+    name: 'Suggestions System',
+    description: 'Automatic suggestions embed generator with vote reactions, decision buttons, and logs.',
+    icon: <Icon as={MdLightbulb} />,
+    useRender: useSuggestionsFeature,
+  },
+  feedback: {
+    name: 'Feedback & Reviews',
+    description: 'Customer review submissions with 1-5 star ratings, modal forms, and automatic channel showcase.',
+    icon: <Icon as={MdStarRate} />,
+    useRender: useFeedbackFeature,
+  },
+  'marketing-requests': {
+    name: 'Marketing & Order Requests',
+    description: 'Convert user orders into structured request cards with Order IDs, staff pings, and delivery logs.',
+    icon: <Icon as={MdOutlineShoppingBag} />,
+    useRender: useMarketingRequestsFeature,
+  },
+  'reaction-roles': {
+    name: 'Reaction Game Roles',
+    description: 'Auto-assign gaming roles via message emoji reactions for 8 popular games.',
     icon: <Icon as={MdAddReaction} />,
-    useRender() {
-      return {
-        component: <></>,
-        onSubmit: () => {},
-      };
-    },
+    useRender: useReactionRolesFeature,
   },
-  meme: {
-    name: <T text="memes" />,
-    description: <T text="memes description" />,
-    icon: <Icon as={IoHappy} />,
-    useRender: useMemeFeature,
+  say: {
+    name: 'Announcements & Broadcast (/say)',
+    description: 'Send formatted stock and text announcements with buy buttons and role pings.',
+    icon: <Icon as={MdCampaign} />,
+    useRender: useSayFeature,
+  },
+  payment: {
+    name: 'Payment Methods Panel',
+    description: 'Display accepted payment methods (Vodafone Cash, Instapay, Binance, PayPal, USDT) in your server.',
+    icon: <Icon as={MdPayment} />,
+    useRender: usePaymentFeature,
   },
 };
