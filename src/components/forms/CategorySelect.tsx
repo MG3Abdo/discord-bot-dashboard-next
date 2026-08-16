@@ -23,7 +23,7 @@ const renderCategoryOption = (category: GuildChannel): Option => {
 function mapCategoryOptions(channels: GuildChannel[]): Option[] {
   if (!Array.isArray(channels) || channels.length === 0) return [];
   return channels
-    .filter((c) => Number(c.type) === ChannelTypes.GUILD_CATEGORY)
+    .filter((c) => Number(c.type) === ChannelTypes.GUILD_CATEGORY || Number(c.type) === 4)
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
     .map(renderCategoryOption);
 }
@@ -50,17 +50,34 @@ export const CategorySelect = forwardRef<SelectInstance<Option, false>, Props>(
     const selected = useMemo(() => {
       if (!value || !channelsQuery.data) return null;
       const found = channelsQuery.data.find(
-        (c) => Number(c.type) === ChannelTypes.GUILD_CATEGORY && String(c.id) === String(value)
+        (c) =>
+          (Number(c.type) === ChannelTypes.GUILD_CATEGORY || Number(c.type) === 4) &&
+          String(c.id) === String(value)
       );
       return found != null ? renderCategoryOption(found) : null;
     }, [value, channelsQuery.data]);
+
+    const noOptionsMessage = () => {
+      if (channelsQuery.isLoading) return 'Loading categories...';
+      if (channelsQuery.isError) {
+        const err = channelsQuery.error as Error;
+        return err?.message ? `⚠️ ${err.message}` : 'Failed to load categories';
+      }
+      return 'No categories found';
+    };
+
+    const placeholder = channelsQuery.isLoading
+      ? 'Loading categories...'
+      : channelsQuery.isError
+      ? 'Failed to load categories'
+      : 'Select a category';
 
     return (
       <SelectField<Option>
         isDisabled={isLoading}
         isLoading={isLoading}
-        placeholder={isLoading ? 'Loading categories...' : 'Select a category'}
-        noOptionsMessage={() => (isLoading ? 'Loading categories...' : 'No categories found')}
+        placeholder={placeholder}
+        noOptionsMessage={noOptionsMessage}
         value={selected}
         options={options}
         onChange={(e) => e != null && onChange(e.value)}

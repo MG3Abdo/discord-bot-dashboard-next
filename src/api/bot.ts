@@ -9,6 +9,8 @@ export type Role = {
   name: string;
   color: number;
   position: number;
+  permissions?: string;
+  mentionable?: boolean;
   icon?: {
     iconUrl?: string;
     emoji?: string;
@@ -80,39 +82,25 @@ export async function fetchGuildInfo(
 }
 
 export async function enableFeature(session: AccessToken, guild: string, feature: string) {
-  try {
-    return await callDefault(
-      `/api/bot/guild/${guild}/features/${feature}`,
-      botRequest(session, {
-        request: {
-          method: 'POST',
-        },
-        allowed: {
-          404: () => null,
-        },
-      })
-    );
-  } catch (e) {
-    console.warn('enableFeature error:', e);
-  }
+  return await callDefault(
+    `/api/bot/guild/${guild}/features/${feature}`,
+    botRequest(session, {
+      request: {
+        method: 'POST',
+      },
+    })
+  );
 }
 
 export async function disableFeature(session: AccessToken, guild: string, feature: string) {
-  try {
-    return await callDefault(
-      `/api/bot/guild/${guild}/features/${feature}`,
-      botRequest(session, {
-        request: {
-          method: 'DELETE',
-        },
-        allowed: {
-          404: () => null,
-        },
-      })
-    );
-  } catch (e) {
-    console.warn('disableFeature error:', e);
-  }
+  return await callDefault(
+    `/api/bot/guild/${guild}/features/${feature}`,
+    botRequest(session, {
+      request: {
+        method: 'DELETE',
+      },
+    })
+  );
 }
 
 export async function getFeature<K extends keyof CustomFeatures>(
@@ -146,28 +134,20 @@ export async function updateFeature<K extends keyof CustomFeatures>(
 ): Promise<CustomFeatures[K]> {
   const isForm = options instanceof FormData;
 
-  try {
-    return await callReturn<CustomFeatures[K]>(
-      `/api/bot/guild/${guild}/features/${feature}`,
-      botRequest(session, {
-        request: {
-          method: 'PATCH',
-          headers: isForm
-            ? {}
-            : {
-                'Content-Type': 'application/json',
-              },
-          body: options,
-        },
-        allowed: {
-          404: () => ({} as CustomFeatures[K]),
-          500: () => ({} as CustomFeatures[K]),
-        },
-      })
-    );
-  } catch {
-    return {} as CustomFeatures[K];
-  }
+  return await callReturn<CustomFeatures[K]>(
+    `/api/bot/guild/${guild}/features/${feature}`,
+    botRequest(session, {
+      request: {
+        method: 'PATCH',
+        headers: isForm
+          ? {}
+          : {
+              'Content-Type': 'application/json',
+            },
+        body: options,
+      },
+    })
+  );
 }
 
 /**
@@ -175,22 +155,22 @@ export async function updateFeature<K extends keyof CustomFeatures>(
  * @returns Guild roles
  */
 export async function fetchGuildRoles(session: AccessToken, guild: string): Promise<Role[]> {
-  try {
-    return await callReturn<Role[]>(
-      `/api/bot/guild/${guild}/roles`,
-      botRequest(session, {
-        request: {
-          method: 'GET',
-        },
-        allowed: {
-          404: () => [],
-          500: () => [],
-        },
-      })
-    );
-  } catch {
-    return [];
+  const result = await callReturn<any>(
+    `/api/bot/guild/${guild}/roles`,
+    botRequest(session, {
+      request: {
+        method: 'GET',
+      },
+    })
+  );
+
+  if (Array.isArray(result)) {
+    return result;
   }
+  if (result && Array.isArray(result.roles)) {
+    return result.roles;
+  }
+  return [];
 }
 
 /**
@@ -200,22 +180,22 @@ export async function fetchGuildChannels(
   session: AccessToken,
   guild: string
 ): Promise<GuildChannel[]> {
-  try {
-    return await callReturn<GuildChannel[]>(
-      `/api/bot/guild/${guild}/channels`,
-      botRequest(session, {
-        request: {
-          method: 'GET',
-        },
-        allowed: {
-          404: () => [],
-          500: () => [],
-        },
-      })
-    );
-  } catch {
-    return [];
+  const result = await callReturn<any>(
+    `/api/bot/guild/${guild}/channels`,
+    botRequest(session, {
+      request: {
+        method: 'GET',
+      },
+    })
+  );
+
+  if (Array.isArray(result)) {
+    return result;
   }
+  if (result && Array.isArray(result.channels)) {
+    return result.channels;
+  }
+  return [];
 }
 
 /**
@@ -225,20 +205,23 @@ export async function fetchGuildResources(
   session: AccessToken,
   guild: string
 ): Promise<GuildResources> {
-  try {
-    return await callReturn<GuildResources>(
-      `/api/bot/guild/${guild}/resources`,
-      botRequest(session, {
-        request: {
-          method: 'GET',
-        },
-        allowed: {
-          404: () => ({ guildId: guild, channels: [], categories: [], roles: [] }),
-          500: () => ({ guildId: guild, channels: [], categories: [], roles: [] }),
-        },
-      })
-    );
-  } catch {
-    return { guildId: guild, channels: [], categories: [], roles: [] };
-  }
+  const result = await callReturn<any>(
+    `/api/bot/guild/${guild}/resources`,
+    botRequest(session, {
+      request: {
+        method: 'GET',
+      },
+      allowed: {
+        404: () => ({ guildId: guild, channels: [], categories: [], roles: [] }),
+        500: () => ({ guildId: guild, channels: [], categories: [], roles: [] }),
+      },
+    })
+  );
+
+  return {
+    guildId: guild,
+    channels: Array.isArray(result?.channels) ? result.channels : [],
+    categories: Array.isArray(result?.categories) ? result.categories : [],
+    roles: Array.isArray(result?.roles) ? result.roles : [],
+  };
 }

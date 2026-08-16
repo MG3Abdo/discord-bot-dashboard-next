@@ -10,7 +10,6 @@ import { Override } from '@/utils/types';
 import { ControlledInput } from './types';
 import { FormCard } from './Form';
 import { useController } from 'react-hook-form';
-import { common } from '@/config/translations/common';
 import { BsPeopleFill } from 'react-icons/bs';
 
 type Props = Override<
@@ -60,12 +59,27 @@ export const RoleSelect = forwardRef<SelectInstance<Option, false>, Props>((prop
     return found != null ? renderRoleOption(found) : null;
   }, [value, rolesQuery.data]);
 
+  const noOptionsMessage = () => {
+    if (rolesQuery.isLoading) return 'Loading roles...';
+    if (rolesQuery.isError) {
+      const err = rolesQuery.error as Error;
+      return err?.message ? `⚠️ ${err.message}` : 'Failed to load roles';
+    }
+    return 'No roles found';
+  };
+
+  const placeholder = rolesQuery.isLoading
+    ? 'Loading roles...'
+    : rolesQuery.isError
+    ? 'Failed to load roles'
+    : 'Select a role';
+
   return (
     <SelectField<Option>
       isDisabled={isLoading}
       isLoading={isLoading}
-      placeholder={isLoading ? 'Loading roles...' : <common.T text="select role" />}
-      noOptionsMessage={() => (isLoading ? 'Loading roles...' : 'No roles found')}
+      placeholder={placeholder}
+      noOptionsMessage={noOptionsMessage}
       value={selected}
       onChange={(e) => e != null && onChange(e.value)}
       options={options}

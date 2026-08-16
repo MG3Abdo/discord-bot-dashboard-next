@@ -49,8 +49,16 @@ export async function callReturn<T>(url: string, init: ReturnOptions<T>): Promis
 /** throw error if condition matches */
 async function handleError(res: Response, options: Options) {
   if (!res.ok && (options.errorOnFail ?? true)) {
-    const raw = await res.json();
-    throw new Error(raw);
+    let message = `Request failed with status ${res.status}`;
+    try {
+      const raw = await res.json();
+      message = typeof raw === 'string' ? raw : raw.error || raw.message || JSON.stringify(raw);
+    } catch {
+      try {
+        message = await res.text();
+      } catch {}
+    }
+    throw new Error(message || `Request failed with status ${res.status}`);
   }
 }
 

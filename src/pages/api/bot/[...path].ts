@@ -43,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = getServerSession(req);
 
   if (!session.success || !session.data?.access_token) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return res.status(401).json({ error: 'Unauthorized: Please log in with Discord' });
   }
 
   const { path } = req.query as { path?: string[] };
@@ -84,7 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const botRes = await fetch(targetUrl, fetchOptions);
 
       if (botRes.status === 404) {
-        return res.status(404).json({ error: 'Guild or resource not found on bot' });
+        return res.status(404).json({ error: 'Guild or resource not found on bot backend' });
       }
 
       if (botRes.ok) {
@@ -107,7 +107,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Validate guildId
     if (!guildId || guildId === 'undefined') {
-      return res.status(400).json({ error: 'Invalid guild ID' });
+      return res.status(400).json({ error: 'Invalid or missing guild ID' });
     }
 
     // Initialize stores for guild if needed
@@ -138,19 +138,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               color: Number(r.color || 0),
               position: Number(r.position || 0),
               permissions: String(r.permissions || '0'),
+              mentionable: Boolean(r.mentionable),
               icon: r.icon ? { iconUrl: `https://cdn.discordapp.com/role-icons/${r.id}/${r.icon}.png` } : undefined,
             }));
             return res.status(200).json(normalizedRoles);
           } else {
-            console.warn(`[API /bot/guild/${guildId}/roles] Discord API returned status ${rolesRes.status}`);
+            const errText = await rolesRes.text().catch(() => '');
+            console.warn(`[API /bot/guild/${guildId}/roles] Discord API error: ${rolesRes.status} ${errText}`);
+            if (rolesRes.status === 403) {
+              return res.status(403).json({ error: 'Bot is missing permissions to view roles in this server' });
+            }
+            if (rolesRes.status === 404) {
+              return res.status(404).json({ error: 'Server not found or Bot is not in this server' });
+            }
+            return res.status(rolesRes.status).json({ error: `Discord API returned status ${rolesRes.status}` });
           }
         } catch (e: any) {
           console.warn(`[API /bot/guild/${guildId}/roles] Fetch failed:`, e?.message || e);
+          return res.status(500).json({ error: e?.message || 'Failed to fetch roles from Discord API' });
         }
       } else {
         console.warn(`[API /bot/guild/${guildId}/roles] BOT_TOKEN is not configured`);
+        return res.status(500).json({ error: 'Bot token is not configured on server (DISCORD_BOT_TOKEN)' });
       }
-      return res.status(200).json([]);
     }
 
     // -----------------------------------------------------------------------
@@ -178,15 +188,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }));
             return res.status(200).json(normalizedChannels);
           } else {
-            console.warn(`[API /bot/guild/${guildId}/channels] Discord API returned status ${channelsRes.status}`);
+            const errText = await channelsRes.text().catch(() => '');
+            console.warn(`[API /bot/guild/${guildId}/channels] Discord API error: ${channelsRes.status} ${errText}`);
+            if (channelsRes.status === 403) {
+              return res.status(403).json({ error: 'Bot is missing permissions to view channels in this server' });
+            }
+            if (channelsRes.status === 404) {
+              return res.status(404).json({ error: 'Server not found or Bot is not in this server' });
+            }
+            return res.status(channelsRes.status).json({ error: `Discord API returned status ${channelsRes.status}` });
           }
         } catch (e: any) {
           console.warn(`[API /bot/guild/${guildId}/channels] Fetch failed:`, e?.message || e);
+          return res.status(500).json({ error: e?.message || 'Failed to fetch channels from Discord API' });
         }
       } else {
         console.warn(`[API /bot/guild/${guildId}/channels] BOT_TOKEN is not configured`);
+        return res.status(500).json({ error: 'Bot token is not configured on server (DISCORD_BOT_TOKEN)' });
       }
-      return res.status(200).json([]);
     }
 
     // -----------------------------------------------------------------------
@@ -228,6 +247,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               color: Number(r.color || 0),
               position: Number(r.position || 0),
               permissions: String(r.permissions || '0'),
+              mentionable: Boolean(r.mentionable),
               icon: r.icon ? { iconUrl: `https://cdn.discordapp.com/role-icons/${r.id}/${r.icon}.png` } : undefined,
             }));
           }
@@ -236,7 +256,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
-      const categories = channels.filter((c) => c.type === 4);
+      const categories = channels.filter((c) => Number(c.type) === 4);
       return res.status(200).json({
         guildId,
         channels,
