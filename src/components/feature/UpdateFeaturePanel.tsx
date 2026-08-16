@@ -43,7 +43,7 @@ export function UpdateFeaturePanel({
 
   const onToggle = async () => {
     const nextState = !isEnabled;
-    setIsEnabled(nextState); // Optimistic UI update
+    setIsEnabled(nextState);
 
     try {
       await enableMutation.mutateAsync({
@@ -61,7 +61,7 @@ export function UpdateFeaturePanel({
         position: 'bottom-right',
       });
     } catch (err) {
-      setIsEnabled(!nextState); // Revert state on failure
+      setIsEnabled(!nextState);
       toast({
         title: 'Action Failed',
         description: 'Could not update feature status on the server.',

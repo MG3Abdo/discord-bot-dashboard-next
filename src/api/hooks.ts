@@ -149,7 +149,7 @@ export function useGuildRolesQuery(guild: string) {
     Keys.guildRoles(guild),
     () => fetchGuildRoles(session!, guild),
     {
-      enabled: status === 'authenticated' && Boolean(guild) && guild !== 'undefined',
+      enabled: Boolean(guild) && guild !== 'undefined' && guild !== '',
       refetchOnWindowFocus: false,
       staleTime: 30 * 1000,
     }
@@ -163,7 +163,7 @@ export function useGuildChannelsQuery(guild: string) {
     Keys.guildChannels(guild),
     () => fetchGuildChannels(session!, guild),
     {
-      enabled: status === 'authenticated' && Boolean(guild) && guild !== 'undefined',
+      enabled: Boolean(guild) && guild !== 'undefined' && guild !== '',
       refetchOnWindowFocus: false,
       staleTime: 30 * 1000,
     }
