@@ -34,9 +34,10 @@ const ALL_MG3_FEATURES = [
   'payment',
 ];
 
-// In-memory Guild Feature Store (isolated per guildId)
+// In-memory Guild Feature & State Store (isolated per guildId)
 // guildId -> featureId -> settings
 const guildFeatureStore: Record<string, Record<string, any>> = {};
+const guildEnabledStore: Record<string, Set<string>> = {};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = getServerSession(req);
@@ -109,9 +110,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Invalid guild ID' });
     }
 
-    // Initialize store for guild if needed
+    // Initialize stores for guild if needed
     if (!guildFeatureStore[guildId]) {
       guildFeatureStore[guildId] = {};
+    }
+    if (!guildEnabledStore[guildId]) {
+      guildEnabledStore[guildId] = new Set(ALL_MG3_FEATURES);
     }
 
     // -----------------------------------------------------------------------
@@ -256,12 +260,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ...(guildFeatureStore[guildId][targetFeature] || {}),
           ...bodyData,
         };
+        guildEnabledStore[guildId].add(targetFeature);
         return res.status(200).json(guildFeatureStore[guildId][targetFeature]);
       }
 
       if (req.method === 'DELETE') {
-        delete guildFeatureStore[guildId][targetFeature];
-        return res.status(200).json({ success: true });
+        guildEnabledStore[guildId].delete(targetFeature);
+        return res.status(200).json({ success: true, enabled: false });
       }
     }
 
@@ -279,6 +284,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Guild Info Request: /guild/:id
     // -----------------------------------------------------------------------
     if (req.method === 'GET' && parts.length === 2) {
+      const currentEnabled = Array.from(guildEnabledStore[guildId] || ALL_MG3_FEATURES);
+
       // Check via Bot Token first
       if (BOT_TOKEN) {
         try {
@@ -295,7 +302,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               name: String(guildData.name),
               icon: guildData.icon,
               owner_id: guildData.owner_id,
-              enabledFeatures: ALL_MG3_FEATURES,
+              enabledFeatures: currentEnabled,
               settings: guildFeatureStore[guildId] || {},
             });
           } else if (discordRes.status === 404 || discordRes.status === 403) {
@@ -340,7 +347,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             name: String(matchedGuild.name),
             icon: matchedGuild.icon,
             owner: isOwner,
-            enabledFeatures: ALL_MG3_FEATURES,
+            enabledFeatures: currentEnabled,
             settings: guildFeatureStore[guildId] || {},
           });
         }

@@ -24,8 +24,8 @@ type Props = Override<
 function renderRoleOption(role: Role): Option {
   const color = role.color && role.color !== 0 ? toRGB(role.color) : 'inherit';
   return {
-    value: role.id,
-    label: `@ ${role.name}`,
+    value: String(role.id),
+    label: `@${role.name}`,
     icon:
       role.icon?.iconUrl != null ? (
         <Image alt="icon" src={role.icon.iconUrl} bg={color} w="22px" h="22px" rounded="full" />
@@ -35,24 +35,30 @@ function renderRoleOption(role: Role): Option {
   };
 }
 
+function mapRoleOptions(roles: Role[], guildId: string): Option[] {
+  if (!Array.isArray(roles) || roles.length === 0) return [];
+  return roles
+    .filter((r) => String(r.id) !== String(guildId) && r.name !== '@everyone')
+    .sort((a, b) => (b.position ?? 0) - (a.position ?? 0))
+    .map(renderRoleOption);
+}
+
 export const RoleSelect = forwardRef<SelectInstance<Option, false>, Props>((props, ref) => {
   const { value, onChange, ...rest } = props;
   const guild = useRouter().query.guild as string;
   const rolesQuery = useGuildRolesQuery(guild);
   const isLoading = rolesQuery.isLoading;
 
-  const validRoles = useMemo(() => {
-    if (!rolesQuery.data || !Array.isArray(rolesQuery.data)) return [];
-    return rolesQuery.data.filter((r) => r.id !== guild && r.name !== '@everyone');
-  }, [rolesQuery.data, guild]);
+  const options = useMemo(
+    () => (rolesQuery.data != null ? mapRoleOptions(rolesQuery.data, guild) : []),
+    [rolesQuery.data, guild]
+  );
 
   const selected = useMemo(() => {
     if (!value || !rolesQuery.data) return null;
-    const found = rolesQuery.data.find((role) => role.id === value);
+    const found = rolesQuery.data.find((role) => String(role.id) === String(value));
     return found != null ? renderRoleOption(found) : null;
   }, [value, rolesQuery.data]);
-
-  const options = useMemo(() => validRoles.map(renderRoleOption), [validRoles]);
 
   return (
     <SelectField<Option>

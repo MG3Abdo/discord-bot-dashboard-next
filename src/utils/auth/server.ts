@@ -70,14 +70,34 @@ export function middleware_hasServerSession(req: NextRequest): boolean {
 
 export function getServerSession(
   req: IncomingMessage & {
-    cookies: NextApiRequestCookies;
+    cookies?: NextApiRequestCookies;
   }
 ): { success: true; data: AccessToken } | { success: false; data?: undefined } {
+  // 1. Check cookies first
   const raw = req.cookies?.[TokenCookie];
   const data = parseTokenData(raw);
   if (data != null) {
     return { success: true, data };
   }
+
+  // 2. Check Authorization header: Bearer <access_token>
+  const authHeader = req.headers?.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.slice(7).trim();
+    if (token && token !== 'undefined' && token !== 'null') {
+      return {
+        success: true,
+        data: {
+          access_token: token,
+          token_type: 'Bearer',
+          expires_in: 3600,
+          refresh_token: '',
+          scope: 'identify guilds',
+        },
+      };
+    }
+  }
+
   return { success: false };
 }
 

@@ -12,13 +12,21 @@ import { FormCard } from './Form';
 import { useController } from 'react-hook-form';
 import { BsFolderFill } from 'react-icons/bs';
 
-const renderCategory = (category: GuildChannel): Option => {
+const renderCategoryOption = (category: GuildChannel): Option => {
   return {
-    label: category.name,
-    value: category.id,
+    label: `📁 ${category.name}`,
+    value: String(category.id),
     icon: <Icon as={BsFolderFill} color="yellow.400" w="18px" h="18px" />,
   };
 };
+
+function mapCategoryOptions(channels: GuildChannel[]): Option[] {
+  if (!Array.isArray(channels) || channels.length === 0) return [];
+  return channels
+    .filter((c) => Number(c.type) === ChannelTypes.GUILD_CATEGORY)
+    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+    .map(renderCategoryOption);
+}
 
 type Props = Override<
   SelectProps<Option, false>,
@@ -34,15 +42,18 @@ export const CategorySelect = forwardRef<SelectInstance<Option, false>, Props>(
     const channelsQuery = useGuildChannelsQuery(guild);
     const isLoading = channelsQuery.isLoading;
 
-    const categories = useMemo(() => {
-      if (!channelsQuery.data || !Array.isArray(channelsQuery.data)) return [];
-      return channelsQuery.data
-        .filter((c) => Number(c.type) === ChannelTypes.GUILD_CATEGORY)
-        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-    }, [channelsQuery.data]);
+    const options = useMemo(
+      () => (channelsQuery.data != null ? mapCategoryOptions(channelsQuery.data) : []),
+      [channelsQuery.data]
+    );
 
-    const selected = value != null ? categories.find((c) => c.id === value) : null;
-    const options = useMemo(() => categories.map(renderCategory), [categories]);
+    const selected = useMemo(() => {
+      if (!value || !channelsQuery.data) return null;
+      const found = channelsQuery.data.find(
+        (c) => Number(c.type) === ChannelTypes.GUILD_CATEGORY && String(c.id) === String(value)
+      );
+      return found != null ? renderCategoryOption(found) : null;
+    }, [value, channelsQuery.data]);
 
     return (
       <SelectField<Option>
@@ -50,7 +61,7 @@ export const CategorySelect = forwardRef<SelectInstance<Option, false>, Props>(
         isLoading={isLoading}
         placeholder={isLoading ? 'Loading categories...' : 'Select a category'}
         noOptionsMessage={() => (isLoading ? 'Loading categories...' : 'No categories found')}
-        value={selected != null ? renderCategory(selected) : null}
+        value={selected}
         options={options}
         onChange={(e) => e != null && onChange(e.value)}
         ref={ref}
