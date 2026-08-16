@@ -3,7 +3,7 @@ import { GuildChannel } from '@/api/bot';
 import { ChannelTypes } from '@/api/discord';
 import { Option, SelectField } from '@/components/forms/SelectField';
 import { forwardRef, useMemo } from 'react';
-import { MdRecordVoiceOver } from 'react-icons/md';
+import { MdRecordVoiceOver, MdCampaign } from 'react-icons/md';
 import { useGuildChannelsQuery } from '@/api/hooks';
 import { Icon } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
@@ -15,58 +15,93 @@ import { useController } from 'react-hook-form';
 import { common } from '@/config/translations/common';
 
 /**
- * Render an options
+ * Render channel option with appropriate Discord icon
  */
-const render = (channel: GuildChannel): Option => {
+const renderChannelOption = (channel: GuildChannel): Option => {
   const icon = () => {
-    switch (channel.type) {
+    switch (Number(channel.type)) {
+      case ChannelTypes.GUILD_ANNOUNCEMENT:
+        return <Icon as={MdCampaign} color="purple.400" />;
       case ChannelTypes.GUILD_STAGE_VOICE:
-      case ChannelTypes.GUILD_VOICE: {
-        return <Icon as={MdRecordVoiceOver} />;
-      }
+      case ChannelTypes.GUILD_VOICE:
+        return <Icon as={MdRecordVoiceOver} color="green.400" />;
       default:
-        return <ChatIcon />;
+        return <Icon as={ChatIcon} color="blue.400" />;
     }
   };
 
   return {
-    label: channel.name,
+    label: `# ${channel.name}`,
     value: channel.id,
     icon: icon(),
   };
 };
 
-function mapOptions(channels: GuildChannel[]) {
-  //channels in category
-  const categories = new Map<string, GuildChannel[]>();
-  //channels with no parent category
-  const roots: GuildChannel[] = [];
+function mapGroupedChannels(channels: GuildChannel[]) {
+  if (!Array.isArray(channels) || channels.length === 0) return [];
 
-  //group channels
-  for (const channel of channels) {
-    if (channel.category == null) roots.push(channel);
-    else {
-      const category = categories.get(channel.category);
+  const sorted = [...channels].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
-      if (category == null) {
-        categories.set(channel.category, [channel]);
-      } else {
-        category.push(channel);
+  // Map categoryId -> category channel
+  const categories = new Map<string, GuildChannel>();
+  // Map categoryId -> array of child channels
+  const categoryChildren = new Map<string, GuildChannel[]>();
+  // Standalone channels (no parent category, and not a category itself)
+  const standalones: GuildChannel[] = [];
+
+  // Pass 1: Identify all category headers
+  for (let i = 0; i < sorted.length; i++) {
+    const channel = sorted[i];
+    if (Number(channel.type) === ChannelTypes.GUILD_CATEGORY) {
+      categories.set(channel.id, channel);
+      if (!categoryChildren.has(channel.id)) {
+        categoryChildren.set(channel.id, []);
       }
     }
   }
 
-  //map channels into select menu options
-  return roots.map((channel) => {
-    if (channel.type === ChannelTypes.GUILD_CATEGORY) {
-      return {
-        ...render(channel),
-        options: categories.get(channel.id)?.map(render) ?? [],
-      };
-    }
+  // Pass 2: Separate selectable channels into category groups or standalone
+  for (let i = 0; i < sorted.length; i++) {
+    const channel = sorted[i];
+    // Categories themselves are not selectable as text channels
+    if (Number(channel.type) === ChannelTypes.GUILD_CATEGORY) continue;
 
-    return render(channel);
+    const parentId = channel.parent_id || channel.category;
+    if (parentId && categories.has(parentId)) {
+      const list = categoryChildren.get(parentId) || [];
+      list.push(channel);
+      categoryChildren.set(parentId, list);
+    } else {
+      standalones.push(channel);
+    }
+  }
+
+  const result: any[] = [];
+
+  // Standalone channels first
+  for (let i = 0; i < standalones.length; i++) {
+    result.push(renderChannelOption(standalones[i]));
+  }
+
+  // Grouped channels under their categories
+  categories.forEach((catChannel, catId) => {
+    const children = categoryChildren.get(catId) || [];
+    if (children.length > 0) {
+      result.push({
+        label: `📂 ${catChannel.name.toUpperCase()}`,
+        options: children.map(renderChannelOption),
+      });
+    }
   });
+
+  // Fallback if no categories matched
+  if (result.length === 0) {
+    return sorted
+      .filter((c) => Number(c.type) !== ChannelTypes.GUILD_CATEGORY)
+      .map(renderChannelOption);
+  }
+
+  return result;
 }
 
 type Props = Override<
@@ -83,9 +118,14 @@ export const ChannelSelect = forwardRef<SelectInstance<Option, false>, Props>(
     const channelsQuery = useGuildChannelsQuery(guild);
     const isLoading = channelsQuery.isLoading;
 
-    const selected = value != null ? channelsQuery.data?.find((c) => c.id === value) : null;
+    const selected = useMemo(() => {
+      if (!value || !channelsQuery.data) return null;
+      const found = channelsQuery.data.find((c) => c.id === value);
+      return found != null ? renderChannelOption(found) : null;
+    }, [value, channelsQuery.data]);
+
     const options = useMemo(
-      () => (channelsQuery.data != null ? mapOptions(channelsQuery.data) : []),
+      () => (channelsQuery.data != null ? mapGroupedChannels(channelsQuery.data) : []),
       [channelsQuery.data]
     );
 
@@ -93,8 +133,9 @@ export const ChannelSelect = forwardRef<SelectInstance<Option, false>, Props>(
       <SelectField<Option>
         isDisabled={isLoading}
         isLoading={isLoading}
-        placeholder={<common.T text="select channel" />}
-        value={selected != null ? render(selected) : null}
+        placeholder={isLoading ? 'Loading channels...' : <common.T text="select channel" />}
+        noOptionsMessage={() => (isLoading ? 'Loading channels...' : 'No channels found')}
+        value={selected}
         options={options}
         onChange={(e) => e != null && onChange(e.value)}
         ref={ref}

@@ -1,5 +1,6 @@
 import { SimpleGrid, VStack } from '@chakra-ui/react';
 import { ChannelSelectForm } from '@/components/forms/ChannelSelect';
+import { CategorySelectForm } from '@/components/forms/CategorySelect';
 import { RoleSelectForm } from '@/components/forms/RoleSelect';
 import { SwitchFieldForm } from '@/components/forms/SwitchField';
 import { useForm } from 'react-hook-form';
@@ -53,7 +54,7 @@ module.exports = {
             }}
             controller={{ control, name: 'panelChannelId' }}
           />
-          <ChannelSelectForm
+          <CategorySelectForm
             control={{
               label: 'Tickets Category',
               description: 'Discord Category under which new ticket channels are created.',

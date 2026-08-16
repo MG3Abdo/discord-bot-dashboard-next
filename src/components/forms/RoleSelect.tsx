@@ -4,15 +4,13 @@ import { Option, SelectField } from '@/components/forms/SelectField';
 import { toRGB } from '@/utils/common';
 import { Role } from '@/api/bot';
 import { useRouter } from 'next/router';
-import { Params } from '@/pages/guilds/[guild]/features/[feature]';
-import { forwardRef } from 'react';
+import { forwardRef, useMemo } from 'react';
 import { SelectInstance, Props as SelectProps } from 'chakra-react-select';
 import { Override } from '@/utils/types';
 import { ControlledInput } from './types';
 import { FormCard } from './Form';
 import { useController } from 'react-hook-form';
 import { common } from '@/config/translations/common';
-
 import { BsPeopleFill } from 'react-icons/bs';
 
 type Props = Override<
@@ -23,35 +21,48 @@ type Props = Override<
   }
 >;
 
-function render(role: Role): Option {
+function renderRoleOption(role: Role): Option {
+  const color = role.color && role.color !== 0 ? toRGB(role.color) : 'inherit';
   return {
     value: role.id,
-    label: role.name,
+    label: `@ ${role.name}`,
     icon:
       role.icon?.iconUrl != null ? (
-        <Image alt="icon" src={role.icon.iconUrl} bg={toRGB(role.color)} w="25px" h="25px" />
+        <Image alt="icon" src={role.icon.iconUrl} bg={color} w="22px" h="22px" rounded="full" />
       ) : (
-        <Icon as={BsPeopleFill} color={toRGB(role.color)} w="20px" h="20px" />
+        <Icon as={BsPeopleFill} color={color} w="18px" h="18px" />
       ),
   };
 }
 
 export const RoleSelect = forwardRef<SelectInstance<Option, false>, Props>((props, ref) => {
   const { value, onChange, ...rest } = props;
-  const { guild } = useRouter().query as Params;
+  const guild = useRouter().query.guild as string;
   const rolesQuery = useGuildRolesQuery(guild);
   const isLoading = rolesQuery.isLoading;
 
-  const selected = value != null ? rolesQuery.data?.find((role) => role.id === value) : null;
+  const validRoles = useMemo(() => {
+    if (!rolesQuery.data || !Array.isArray(rolesQuery.data)) return [];
+    return rolesQuery.data.filter((r) => r.id !== guild && r.name !== '@everyone');
+  }, [rolesQuery.data, guild]);
+
+  const selected = useMemo(() => {
+    if (!value || !rolesQuery.data) return null;
+    const found = rolesQuery.data.find((role) => role.id === value);
+    return found != null ? renderRoleOption(found) : null;
+  }, [value, rolesQuery.data]);
+
+  const options = useMemo(() => validRoles.map(renderRoleOption), [validRoles]);
 
   return (
     <SelectField<Option>
       isDisabled={isLoading}
       isLoading={isLoading}
-      placeholder={<common.T text="select role" />}
-      value={selected != null ? render(selected) : null}
+      placeholder={isLoading ? 'Loading roles...' : <common.T text="select role" />}
+      noOptionsMessage={() => (isLoading ? 'Loading roles...' : 'No roles found')}
+      value={selected}
       onChange={(e) => e != null && onChange(e.value)}
-      options={rolesQuery.data?.map(render)}
+      options={options}
       ref={ref}
       {...rest}
     />

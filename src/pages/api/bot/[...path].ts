@@ -4,13 +4,18 @@ import { API_ENDPOINT, getServerSession } from '@/utils/auth/server';
 const BOT_API_URL =
   process.env.API_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_API_ENDPOINT ||
   process.env.BOT_API_URL ||
+  process.env.BOT_BACKEND_URL ||
   '';
 
 const BOT_TOKEN =
   process.env.DISCORD_BOT_TOKEN ||
   process.env.BOT_TOKEN ||
   process.env.DISCORD_TOKEN ||
+  process.env.TOKEN ||
+  process.env.BOT_CLIENT_TOKEN ||
+  process.env.NEXT_PUBLIC_BOT_TOKEN ||
   '';
 
 const DASHBOARD_API_TOKEN = process.env.DASHBOARD_API_TOKEN || '';
@@ -96,8 +101,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (subpath.startsWith('guild/') || subpath.startsWith('guilds/')) {
     const parts = subpath.split('/');
     const guildId = parts[1];
-    const subResource = parts[2]; // e.g. 'roles', 'channels', 'features'
+    const subResource = parts[2]; // e.g. 'roles', 'channels', 'resources', 'features'
     const targetFeature = parts[3]; // e.g. 'payment', 'tickets'
+
+    // Validate guildId
+    if (!guildId || guildId === 'undefined') {
+      return res.status(400).json({ error: 'Invalid guild ID' });
+    }
 
     // Initialize store for guild if needed
     if (!guildFeatureStore[guildId]) {
@@ -110,16 +120,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (subResource === 'roles') {
       if (BOT_TOKEN) {
         try {
+          console.log(`[API /bot/guild/${guildId}/roles] Requesting roles from Discord API`);
           const rolesRes = await fetch(`${API_ENDPOINT}/guilds/${guildId}/roles`, {
             headers: { Authorization: `Bot ${BOT_TOKEN}` },
           });
+
           if (rolesRes.ok) {
-            const rolesData = await rolesRes.json();
-            return res.status(200).json(rolesData);
+            const rolesData: any[] = await rolesRes.json();
+            console.log(`[API /bot/guild/${guildId}/roles] Found ${rolesData.length} roles for guild ${guildId}`);
+            const normalizedRoles = rolesData.map((r) => ({
+              id: String(r.id),
+              name: String(r.name),
+              color: Number(r.color || 0),
+              position: Number(r.position || 0),
+              permissions: String(r.permissions || '0'),
+              icon: r.icon ? { iconUrl: `https://cdn.discordapp.com/role-icons/${r.id}/${r.icon}.png` } : undefined,
+            }));
+            return res.status(200).json(normalizedRoles);
+          } else {
+            console.warn(`[API /bot/guild/${guildId}/roles] Discord API returned status ${rolesRes.status}`);
           }
-        } catch (e) {
-          console.warn('Error fetching roles with Bot Token:', e);
+        } catch (e: any) {
+          console.warn(`[API /bot/guild/${guildId}/roles] Fetch failed:`, e?.message || e);
         }
+      } else {
+        console.warn(`[API /bot/guild/${guildId}/roles] BOT_TOKEN is not configured`);
       }
       return res.status(200).json([]);
     }
@@ -130,18 +155,90 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (subResource === 'channels') {
       if (BOT_TOKEN) {
         try {
+          console.log(`[API /bot/guild/${guildId}/channels] Requesting channels from Discord API`);
           const channelsRes = await fetch(`${API_ENDPOINT}/guilds/${guildId}/channels`, {
             headers: { Authorization: `Bot ${BOT_TOKEN}` },
           });
+
           if (channelsRes.ok) {
-            const channelsData = await channelsRes.json();
-            return res.status(200).json(channelsData);
+            const channelsData: any[] = await channelsRes.json();
+            console.log(`[API /bot/guild/${guildId}/channels] Found ${channelsData.length} channels for guild ${guildId}`);
+            const normalizedChannels = channelsData.map((ch) => ({
+              id: String(ch.id),
+              name: String(ch.name),
+              type: Number(ch.type),
+              position: Number(ch.position ?? 0),
+              parent_id: ch.parent_id || ch.parentId || ch.category || null,
+              category: ch.parent_id || ch.parentId || ch.category || null,
+              nsfw: Boolean(ch.nsfw),
+            }));
+            return res.status(200).json(normalizedChannels);
+          } else {
+            console.warn(`[API /bot/guild/${guildId}/channels] Discord API returned status ${channelsRes.status}`);
           }
-        } catch (e) {
-          console.warn('Error fetching channels with Bot Token:', e);
+        } catch (e: any) {
+          console.warn(`[API /bot/guild/${guildId}/channels] Fetch failed:`, e?.message || e);
         }
+      } else {
+        console.warn(`[API /bot/guild/${guildId}/channels] BOT_TOKEN is not configured`);
       }
       return res.status(200).json([]);
+    }
+
+    // -----------------------------------------------------------------------
+    // Unified Resources Request: /guild/:id/resources
+    // -----------------------------------------------------------------------
+    if (subResource === 'resources') {
+      let channels: any[] = [];
+      let roles: any[] = [];
+
+      if (BOT_TOKEN) {
+        try {
+          const [channelsRes, rolesRes] = await Promise.all([
+            fetch(`${API_ENDPOINT}/guilds/${guildId}/channels`, {
+              headers: { Authorization: `Bot ${BOT_TOKEN}` },
+            }),
+            fetch(`${API_ENDPOINT}/guilds/${guildId}/roles`, {
+              headers: { Authorization: `Bot ${BOT_TOKEN}` },
+            }),
+          ]);
+
+          if (channelsRes.ok) {
+            const chData: any[] = await channelsRes.json();
+            channels = chData.map((ch) => ({
+              id: String(ch.id),
+              name: String(ch.name),
+              type: Number(ch.type),
+              position: Number(ch.position ?? 0),
+              parent_id: ch.parent_id || ch.parentId || ch.category || null,
+              category: ch.parent_id || ch.parentId || ch.category || null,
+              nsfw: Boolean(ch.nsfw),
+            }));
+          }
+
+          if (rolesRes.ok) {
+            const rData: any[] = await rolesRes.json();
+            roles = rData.map((r) => ({
+              id: String(r.id),
+              name: String(r.name),
+              color: Number(r.color || 0),
+              position: Number(r.position || 0),
+              permissions: String(r.permissions || '0'),
+              icon: r.icon ? { iconUrl: `https://cdn.discordapp.com/role-icons/${r.id}/${r.icon}.png` } : undefined,
+            }));
+          }
+        } catch (e: any) {
+          console.warn(`[API /bot/guild/${guildId}/resources] Fetch failed:`, e?.message || e);
+        }
+      }
+
+      const categories = channels.filter((c) => c.type === 4);
+      return res.status(200).json({
+        guildId,
+        channels,
+        categories,
+        roles,
+      });
     }
 
     // -----------------------------------------------------------------------

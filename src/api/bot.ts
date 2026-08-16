@@ -18,11 +18,21 @@ export type Role = {
 export type GuildChannel = {
   id: string;
   name: string;
-  type: ChannelTypes;
+  type: ChannelTypes | number;
+  position?: number;
   /**
-   * parent category of the channel
+   * parent category ID of the channel
    */
-  category?: string;
+  category?: string | null;
+  parent_id?: string | null;
+  nsfw?: boolean;
+};
+
+export type GuildResources = {
+  guildId: string;
+  channels: GuildChannel[];
+  categories: GuildChannel[];
+  roles: Role[];
 };
 
 /**
@@ -57,8 +67,6 @@ export async function fetchGuildInfo(
       ? result.enabledFeatures
       : Array.isArray(result.features)
       ? result.features
-      : result.settings?.welcome
-      ? ['welcome-message']
       : [];
 
     return {
@@ -207,5 +215,30 @@ export async function fetchGuildChannels(
     );
   } catch {
     return [];
+  }
+}
+
+/**
+ * @returns Combined Guild resources (channels, categories, roles)
+ */
+export async function fetchGuildResources(
+  session: AccessToken,
+  guild: string
+): Promise<GuildResources> {
+  try {
+    return await callReturn<GuildResources>(
+      `/api/bot/guild/${guild}/resources`,
+      botRequest(session, {
+        request: {
+          method: 'GET',
+        },
+        allowed: {
+          404: () => ({ guildId: guild, channels: [], categories: [], roles: [] }),
+          500: () => ({ guildId: guild, channels: [], categories: [], roles: [] }),
+        },
+      })
+    );
+  } catch {
+    return { guildId: guild, channels: [], categories: [], roles: [] };
   }
 }
