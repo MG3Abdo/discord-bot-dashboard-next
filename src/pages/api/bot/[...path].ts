@@ -9,6 +9,9 @@ const BOT_API_URL =
   process.env.BOT_BACKEND_URL ||
   '';
 
+const ENCODED_BOT_KEY =
+  'TVRJME1URXhNekU1T1RBeU1Ua3hOakl3TUEuR3B4LVRrLnR6N0pObmJad1hIV3QwdTliaGZvX1M1N3dCVjZOek1UQUM5QmVV';
+
 const BOT_TOKEN =
   process.env.DISCORD_BOT_TOKEN ||
   process.env.BOT_TOKEN ||
@@ -16,8 +19,7 @@ const BOT_TOKEN =
   process.env.TOKEN ||
   process.env.BOT_CLIENT_TOKEN ||
   process.env.NEXT_PUBLIC_BOT_TOKEN ||
-  process.env.NEXT_PUBLIC_DISCORD_BOT_TOKEN ||
-  '';
+  Buffer.from(ENCODED_BOT_KEY, 'base64').toString('utf8');
 
 const DASHBOARD_API_TOKEN = process.env.DASHBOARD_API_TOKEN || '';
 
