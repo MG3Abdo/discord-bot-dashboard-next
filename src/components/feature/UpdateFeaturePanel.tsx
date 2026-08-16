@@ -9,7 +9,7 @@ import { Params } from '@/pages/guilds/[guild]/features/[feature]';
 import { feature as view } from '@/config/translations/feature';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-import { BsCheckCircleFill, BsXCircleFill } from 'react-icons/bs';
+import { BsCheckCircleFill, BsXCircleFill, BsSendFill } from 'react-icons/bs';
 
 export function UpdateFeaturePanel({
   feature,
@@ -26,6 +26,7 @@ export function UpdateFeaturePanel({
 
   const isEnabledInServer = guildInfoQuery.data?.enabledFeatures?.includes(featureId) ?? true;
   const [isEnabled, setIsEnabled] = useState<boolean>(isEnabledInServer);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   useEffect(() => {
     if (guildInfoQuery.data?.enabledFeatures) {
@@ -96,6 +97,39 @@ export function UpdateFeaturePanel({
     }
   };
 
+  const onPublish = async () => {
+    setIsPublishing(true);
+    try {
+      const res = await fetch(`/api/bot/guild/${guild}/features/${featureId}/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to send panel to Discord');
+      }
+      toast({
+        title: '🚀 Panel Sent to Discord!',
+        description: `Successfully published ${config.name} interactive embed to your Discord channel.`,
+        status: 'success',
+        duration: 4000,
+        isClosable: true,
+        position: 'bottom-right',
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Publish Failed',
+        description: err?.message || 'Please select a channel and click Save first.',
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+        position: 'bottom-right',
+      });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   return (
     <Flex direction="column" gap={5} w="full" h="full">
       <Flex direction={{ base: 'column', md: 'row' }} mx={{ '3sm': 5 }} justify="space-between" align={{ md: 'center' }}>
@@ -120,7 +154,20 @@ export function UpdateFeaturePanel({
           </Flex>
           <Text color="TextSecondary" mt={1}>{config.description}</Text>
         </Box>
-        <ButtonGroup mt={{ base: 3, md: 0 }}>
+        <ButtonGroup mt={{ base: 3, md: 0 }} spacing={3}>
+          {isEnabled && (
+            <Button
+              variant="action"
+              colorScheme="purple"
+              isLoading={isPublishing}
+              onClick={onPublish}
+              leftIcon={<Icon as={BsSendFill} />}
+              px={5}
+              rounded="xl"
+            >
+              Send to Discord
+            </Button>
+          )}
           <Button
             variant={isEnabled ? 'danger' : 'action'}
             colorScheme={isEnabled ? 'red' : 'green'}

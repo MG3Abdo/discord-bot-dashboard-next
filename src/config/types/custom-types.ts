@@ -34,6 +34,10 @@ export type TicketsFeature = {
   ceoRoleId?: string;
   enableTranscripts?: boolean;
   enableDmFeedback?: boolean;
+  embedTitle?: string;
+  embedDescription?: string;
+  embedColor?: string;
+  embedBannerUrl?: string;
 };
 
 // 2. Server Logs
@@ -54,10 +58,13 @@ export type WelcomeFeature = {
   channelId?: string;
   welcomeChannelId?: string;
   message?: string;
+  welcomeTitle?: string;
+  welcomeDescription?: string;
+  welcomeColor?: string;
+  welcomeBannerUrl?: string;
   autoRoleId?: string;
   enableImage?: boolean;
   enableDm?: boolean;
-  welcomeBannerUrl?: string;
   rulesChannelId?: string;
   ticketChannelId?: string;
   feedbackChannelId?: string;
@@ -120,6 +127,8 @@ export type ReactionRolesFeature = {
   messageId?: string;
   roleId?: string;
   emoji?: string;
+  panelTitle?: string;
+  panelDescription?: string;
   reactionRoleChannelId?: string;
   arcRaidersRoleId?: string;
   overwatchRoleId?: string;

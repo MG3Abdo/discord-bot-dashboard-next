@@ -122,6 +122,149 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // -----------------------------------------------------------------------
+    // Direct Publish / Deploy to Discord Channel
+    // /guild/:id/features/:feature/publish
+    // -----------------------------------------------------------------------
+    if (subResource === 'features' && targetFeature && (parts[4] === 'publish' || parts[4] === 'deploy')) {
+      const config = guildFeatureStore[guildId]?.[targetFeature] || {};
+      const targetChannelId =
+        config.panelChannelId ||
+        config.channelId ||
+        config.welcomeChannelId ||
+        config.defaultChannelId ||
+        config.requestChannelId ||
+        config.receiptLogChannelId;
+
+      if (!targetChannelId) {
+        return res.status(400).json({
+          error: 'Please select a channel in the dropdown first and click Save before sending to Discord.',
+        });
+      }
+
+      if (!BOT_TOKEN) {
+        return res.status(500).json({ error: 'Bot token is not configured on server' });
+      }
+
+      let payload: any = {};
+
+      if (targetFeature === 'tickets') {
+        payload = {
+          embeds: [
+            {
+              title: config.embedTitle || '🎫 MG3 STORE • SUPPORT TICKETS',
+              description:
+                config.embedDescription ||
+                'Welcome to **MG3 Support Services**.\nPlease choose the appropriate service department from the select menu below to create your private ticket.\n\n✦ Fast 24/7 staff assistance\n✦ Automated order delivery & transcripts\n✦ Direct contact with management',
+              color: parseInt((config.embedColor || '#7c3aed').replace('#', ''), 16) || 0x7c3aed,
+              image: config.embedBannerUrl ? { url: config.embedBannerUrl } : { url: 'https://i.imghos.co/MtalsvvN.png' },
+              footer: { text: 'MG3 STORE • 24/7 Premium Support' },
+              timestamp: new Date().toISOString(),
+            },
+          ],
+          components: [
+            {
+              type: 1, // ActionRow
+              components: [
+                {
+                  type: 3, // StringSelect
+                  custom_id: 'ticket_select_service',
+                  placeholder: 'Select a department to open a ticket...',
+                  options: [
+                    { label: '🎮 Game Support', value: 'ARC', description: 'Game accounts, boosts, and keys', emoji: { name: '🎮' } },
+                    { label: '🛒 Orders & Inquiries', value: 'BUY_SELL', description: 'Store products & payments', emoji: { name: '🛒' } },
+                    { label: '🤝 Partner & Marketing', value: 'MARKETING', description: 'Partnership, ads & creator deals', emoji: { name: '🤝' } },
+                    { label: '👑 CEO & Administration', value: 'SUPPORT_AND_INQUIRIES', description: 'Direct escalation with management', emoji: { name: '👑' } },
+                  ],
+                },
+              ],
+            },
+          ],
+        };
+      } else if (targetFeature === 'reaction-roles') {
+        payload = {
+          embeds: [
+            {
+              title: config.panelTitle || '🎮 CHOOSE YOUR GAMING ROLES',
+              description:
+                config.panelDescription ||
+                'Select the games you play by clicking the buttons below to receive updates, ping notifications, and unlock game channels!',
+              color: 0x7c3aed,
+              image: { url: 'https://i.imghos.co/MLyjjcyY.webp' },
+              footer: { text: 'MG3 STORE • Auto Role Management' },
+            },
+          ],
+          components: [
+            {
+              type: 1,
+              components: [
+                { type: 2, style: 2, custom_id: 'role:arc', label: 'ARC Raiders', emoji: { name: '🏹' } },
+                { type: 2, style: 2, custom_id: 'role:ow2', label: 'Overwatch 2', emoji: { name: '🛡️' } },
+                { type: 2, style: 2, custom_id: 'role:rl', label: 'Rocket League', emoji: { name: '🏎️' } },
+                { type: 2, style: 2, custom_id: 'role:mr', label: 'Marvel Rivals', emoji: { name: '⚡' } },
+              ],
+            },
+            {
+              type: 1,
+              components: [
+                { type: 2, style: 2, custom_id: 'role:val', label: 'Valorant', emoji: { name: '🎯' } },
+                { type: 2, style: 2, custom_id: 'role:cod', label: 'Call of Duty', emoji: { name: '🔫' } },
+                { type: 2, style: 2, custom_id: 'role:fc', label: 'EA Sports FC', emoji: { name: '⚽' } },
+                { type: 2, style: 2, custom_id: 'role:fivem', label: 'FiveM GTA', emoji: { name: '🚗' } },
+              ],
+            },
+          ],
+        };
+      } else if (targetFeature === 'welcome') {
+        payload = {
+          embeds: [
+            {
+              title: config.welcomeTitle || '🎉 WELCOME TO MG3 STORE',
+              description:
+                config.welcomeDescription ||
+                'Welcome to **MG3 STORE**!\n\n✦ Please read the server rules\n✦ Open a ticket for any orders or help\n✦ Enjoy your stay with our community!',
+              color: 0x7c3aed,
+              image: { url: 'https://i.imghos.co/ntfWXhwt.png' },
+              footer: { text: 'MG3 STORE • Community & Gaming' },
+            },
+          ],
+        };
+      } else {
+        payload = {
+          embeds: [
+            {
+              title: `✨ MG3 • ${targetFeature.toUpperCase()}`,
+              description: `This is a test notification for the **${targetFeature}** feature in MG3 STORE.`,
+              color: 0x7c3aed,
+              footer: { text: 'MG3 Nexus Dashboard' },
+              timestamp: new Date().toISOString(),
+            },
+          ],
+        };
+      }
+
+      try {
+        const sendRes = await fetch(`${API_ENDPOINT}/channels/${targetChannelId}/messages`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bot ${BOT_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (sendRes.ok) {
+          const sentData = await sendRes.json();
+          return res.status(200).json({ success: true, messageId: sentData.id, channelId: targetChannelId });
+        } else {
+          const errText = await sendRes.text();
+          return res.status(sendRes.status).json({ error: `Discord API Error: ${errText}` });
+        }
+      } catch (err: any) {
+        return res.status(500).json({ error: err?.message || 'Failed to send panel to Discord' });
+      }
+    }
+
+    // -----------------------------------------------------------------------
     // Roles Request: /guild/:id/roles
     // -----------------------------------------------------------------------
     if (subResource === 'roles') {
