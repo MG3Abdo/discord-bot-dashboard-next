@@ -11,12 +11,15 @@ import { z } from 'zod';
 import { getAbsoluteUrl } from '@/utils/get-absolute-url';
 
 async function exchangeToken(code: string): Promise<AccessToken> {
+  const redirectUri =
+    process.env.DISCORD_REDIRECT_URI || `${getAbsoluteUrl()}/api/auth/callback`;
+
   const data = {
     client_id: CLIENT_ID,
     client_secret: CLIENT_SECRET,
     grant_type: 'authorization_code',
     code: code,
-    redirect_uri: `${getAbsoluteUrl()}/api/auth/callback`,
+    redirect_uri: redirectUri,
   };
 
   const headers = {
@@ -32,7 +35,9 @@ async function exchangeToken(code: string): Promise<AccessToken> {
   if (response.ok) {
     return (await response.json()) as AccessToken;
   } else {
-    throw new Error('Failed to exchange token');
+    const errorText = await response.text().catch(() => '');
+    console.error('Failed to exchange token with Discord:', response.status, errorText);
+    throw new Error(`Failed to exchange token: ${response.status}`);
   }
 }
 
@@ -41,9 +46,9 @@ const querySchema = z.object({
   state: z
     .string()
     .optional()
-    //Handle unsupported locales
+    // Handle unsupported locales
     .transform((v) => {
-      if (i18n == null || v == null) return undefined;
+      if (i18n == null || v == null || v === '') return undefined;
 
       return i18n.locales.find((locale) => locale === v);
     }),
@@ -53,12 +58,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const query = querySchema.safeParse(req.query);
 
   if (!query.success) {
-    return res.status(400).json('Invalid query param');
+    return res.status(400).json({ error: 'Invalid query param' });
   }
 
   const { code, state } = query.data;
-  const token = await exchangeToken(code);
 
-  setServerSession(req, res, token);
-  res.redirect(state ? `/${state}/user/home` : `/user/home`);
+  try {
+    const token = await exchangeToken(code);
+    setServerSession(req, res, token);
+    const destination = state ? `/${state}/user/home` : `/user/home`;
+    res.redirect(destination);
+  } catch (error) {
+    console.error('OAuth Callback Error:', error);
+    res.redirect(`/auth/signin?error=oauth_failed`);
+  }
 }

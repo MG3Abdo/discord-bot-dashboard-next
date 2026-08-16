@@ -6,7 +6,6 @@ import {
   ButtonGroup,
   Card,
   CardBody,
-  Center,
   Circle,
   Flex,
   Heading,
@@ -14,25 +13,24 @@ import {
   Icon,
   SimpleGrid,
   Skeleton,
-  Spacer,
-  Stack,
   Text,
   VStack,
 } from '@chakra-ui/react';
 import { config } from '@/config/common';
-import { useGuilds } from '@/api/hooks';
+import { useGuilds, useSelfUserQuery } from '@/api/hooks';
 import { NextPageWithLayout } from '@/pages/_app';
 import AppLayout from '@/components/layout/app';
 import { iconUrl } from '@/api/discord';
 import { dashboard } from '@/config/translations/dashboard';
 import Link from 'next/link';
-import { FaRobot, FaServer } from 'react-icons/fa';
+import { FaRobot, FaServer, FaCrown } from 'react-icons/fa';
 import { IoOpen, IoShieldCheckmark } from 'react-icons/io5';
 import { MdMessage, MdSecurity, MdSpeed } from 'react-icons/md';
 import { FiArrowRight, FiUser } from 'react-icons/fi';
 
 const HomePage: NextPageWithLayout = () => {
   const t = dashboard.useTranslations();
+  const { data: user } = useSelfUserQuery();
 
   return (
     <Flex direction="column" gap={6} maxW="1400px" mx="auto" w="full" pb={10}>
@@ -60,7 +58,9 @@ const HomePage: NextPageWithLayout = () => {
           <VStack align="start" spacing={1}>
             <HStack>
               <Heading color="white" fontSize={{ base: '2xl', md: '3xl' }} fontWeight="bold">
-                {t.hero.title}
+                {user?.global_name || user?.username
+                  ? `Welcome, ${user.global_name || user.username}!`
+                  : t.hero.title}
               </Heading>
               <Badge colorScheme="green" px={2} py={0.5} rounded="md" fontSize="xs">
                 Online
@@ -172,7 +172,7 @@ export function GuildSelect() {
   const t = dashboard.useTranslations();
   const guilds = useGuilds();
 
-  if (guilds.status === 'loading') {
+  if (guilds.isLoading) {
     return (
       <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} gap={4}>
         <Skeleton minH="100px" rounded="2xl" />
@@ -182,7 +182,7 @@ export function GuildSelect() {
     );
   }
 
-  if (guilds.status === 'error') {
+  if (guilds.isError) {
     return (
       <Card variant="primary" rounded="2xl" p={6}>
         <CardBody as={VStack} spacing={4} align="center">
@@ -259,9 +259,14 @@ export function GuildSelect() {
                 {guild.name}
               </Text>
               <HStack spacing={1} mt={0.5}>
-                <Icon as={IoShieldCheckmark} color="green.500" w={3.5} h={3.5} />
+                <Icon
+                  as={guild.owner ? FaCrown : IoShieldCheckmark}
+                  color={guild.owner ? 'yellow.500' : 'green.500'}
+                  w={3.5}
+                  h={3.5}
+                />
                 <Text fontSize="xs" color="TextSecondary">
-                  Administrator
+                  {guild.owner ? 'Server Owner' : 'Administrator'}
                 </Text>
               </HStack>
             </Box>

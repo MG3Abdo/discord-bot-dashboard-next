@@ -1,6 +1,6 @@
 import { CustomFeatures, CustomGuildInfo } from '../config/types';
 import { QueryClient, useMutation, useQuery } from '@tanstack/react-query';
-import { UserInfo, getGuild, getGuilds, fetchUserInfo } from '@/api/discord';
+import { UserInfo, Guild, getGuild, getGuilds, fetchUserInfo } from '@/api/discord';
 import {
   disableFeature,
   enableFeature,
@@ -20,8 +20,8 @@ export const client = new QueryClient({
     },
     queries: {
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: 0,
+      staleTime: 60 * 1000,
+      retry: 1,
     },
   },
 });
@@ -39,27 +39,28 @@ export const Mutations = {
 };
 
 export function useGuild(id: string) {
-  const accessToken = useAccessToken();
+  const { status } = useSession();
 
-  return useQuery(['guild', id], () => getGuild(accessToken as string, id), {
-    enabled: accessToken != null,
+  return useQuery(['guild', id], () => getGuild('', id), {
+    enabled: status === 'authenticated' && Boolean(id),
   });
 }
 
 export function useGuilds() {
-  const accessToken = useAccessToken();
+  const { status } = useSession();
 
-  return useQuery(['user_guilds'], () => getGuilds(accessToken as string), {
-    enabled: accessToken != null,
+  return useQuery<Guild[]>(['user_guilds'], () => getGuilds(), {
+    enabled: status === 'authenticated',
+    staleTime: 60 * 1000,
   });
 }
 
 export function useSelfUserQuery() {
-  const accessToken = useAccessToken();
+  const { status } = useSession();
 
-  return useQuery<UserInfo>(['users', 'me'], () => fetchUserInfo(accessToken!!), {
-    enabled: accessToken != null,
-    staleTime: Infinity,
+  return useQuery<UserInfo>(['users', 'me'], () => fetchUserInfo(), {
+    enabled: status === 'authenticated',
+    staleTime: 60 * 1000,
   });
 }
 
@@ -70,7 +71,7 @@ export function useGuildInfoQuery(guild: string) {
     Keys.guild_info(guild),
     () => fetchGuildInfo(session!!, guild),
     {
-      enabled: status === 'authenticated',
+      enabled: status === 'authenticated' && Boolean(guild),
       refetchOnWindowFocus: true,
       retry: false,
       staleTime: 0,
@@ -82,7 +83,7 @@ export function useFeatureQuery<K extends keyof CustomFeatures>(guild: string, f
   const { status, session } = useSession();
 
   return useQuery(Keys.features(guild, feature), () => getFeature(session!!, guild, feature), {
-    enabled: status === 'authenticated',
+    enabled: status === 'authenticated' && Boolean(guild),
   });
 }
 
@@ -153,8 +154,8 @@ export function useGuildChannelsQuery(guild: string) {
   return useQuery(Keys.guildChannels(guild), () => fetchGuildChannels(session!!, guild));
 }
 
-export function useSelfUser(): UserInfo {
-  return useSelfUserQuery().data!!;
+export function useSelfUser(): UserInfo | undefined {
+  return useSelfUserQuery().data;
 }
 
 export function useGuildPreview(guild: string) {

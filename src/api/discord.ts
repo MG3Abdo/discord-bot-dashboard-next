@@ -1,15 +1,15 @@
 import { logout } from '@/utils/auth/hooks';
 import { callReturn } from '@/utils/fetch/core';
-import { discordRequest } from '@/utils/fetch/requests';
 
 export type UserInfo = {
   id: string;
   username: string;
   discriminator: string;
-  avatar: string;
+  global_name?: string | null;
+  avatar: string | null;
   mfa_enabled?: boolean;
-  banner?: string;
-  accent_color?: number;
+  banner?: string | null;
+  accent_color?: number | null;
   locale?: string;
   flags?: number;
   premium_type?: number;
@@ -19,8 +19,13 @@ export type UserInfo = {
 export type Guild = {
   id: string;
   name: string;
-  icon: string;
+  icon: string | null;
   permissions: string;
+  owner?: boolean;
+  isAdmin?: boolean;
+  canManage?: boolean;
+  features?: string[];
+  hasBot?: boolean;
 };
 
 export type IconHash = string;
@@ -57,16 +62,6 @@ export enum PermissionFlags {
   MANAGE_ROLES = 1 << 28,
   MANAGE_WEBHOOKS = 1 << 29,
   MANAGE_EMOJIS_AND_STICKERS = 1 << 30,
-  USE_APPLICATION_COMMANDS = 1 << 31,
-  REQUEST_TO_SPEAK = 1 << 32,
-  MANAGE_EVENTS = 1 << 33,
-  MANAGE_THREADS = 1 << 34,
-  CREATE_PUBLIC_THREADS = 1 << 35,
-  CREATE_PRIVATE_THREADS = 1 << 36,
-  USE_EXTERNAL_STICKERS = 1 << 37,
-  SEND_MESSAGES_IN_THREADS = 1 << 38,
-  USE_EMBEDDED_ACTIVITIES = 1 << 39,
-  MODERATE_MEMBERS = 1 << 40,
 }
 
 export enum ChannelTypes {
@@ -84,46 +79,103 @@ export enum ChannelTypes {
   GUILD_FORUM = 15,
 }
 
-export async function fetchUserInfo(accessToken: string) {
-  return await callReturn<UserInfo>(
-    `/users/@me`,
-    discordRequest(accessToken, {
-      request: {
-        method: 'GET',
+/**
+ * Check if the user has management permissions (Administrator or Manage Guild or Server Owner)
+ * Uses 64-bit BigInt calculations to avoid JavaScript 32-bit bitwise truncation
+ */
+export function canManageGuild(guild: Guild): boolean {
+  if (guild.owner) return true;
+  if (guild.isAdmin || guild.canManage) return true;
+
+  try {
+    const perms = BigInt(guild.permissions || '0');
+    // ADMINISTRATOR: 1n << 3n = 8
+    // MANAGE_GUILD: 1n << 5n = 32
+    const adminBit = BigInt(8);
+    const manageBit = BigInt(32);
+    const isAdmin = (perms & adminBit) === adminBit;
+    const canManage = (perms & manageBit) === manageBit;
+    return isAdmin || canManage;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fetch current user profile via server-side API proxy
+ */
+export async function fetchUserInfo(_accessToken?: string): Promise<UserInfo> {
+  return await callReturn<UserInfo>('/api/user', {
+    request: {
+      method: 'GET',
+    },
+    allowed: {
+      401: async () => {
+        await logout();
+        throw new Error('Not logged in');
       },
-      allowed: {
-        401: async () => {
-          await logout();
+    },
+  });
+}
 
-          throw new Error('Not logged in');
-        },
+/**
+ * Fetch current user guilds via server-side API proxy
+ */
+export async function getGuilds(_accessToken?: string): Promise<Guild[]> {
+  return await callReturn<Guild[]>('/api/guilds', {
+    request: {
+      method: 'GET',
+    },
+    allowed: {
+      401: async () => {
+        await logout();
+        throw new Error('Not logged in');
       },
-    })
-  );
+    },
+  });
 }
 
-export async function getGuilds(accessToken: string) {
-  return await callReturn<Guild[]>(
-    `/users/@me/guilds`,
-    discordRequest(accessToken, { request: { method: 'GET' } })
-  );
+export async function getGuild(_accessToken: string, id: string): Promise<Guild | undefined> {
+  const guilds = await getGuilds();
+  return guilds.find((g) => g.id === id);
 }
 
-export async function getGuild(accessToken: string, id: string) {
-  return await callReturn<Guild>(
-    `/guilds/${id}`,
-    discordRequest(accessToken, { request: { method: 'GET' } })
-  );
+export function iconUrl(guild: { id: string; icon?: string | null }): string | undefined {
+  if (!guild.icon) return undefined;
+  const isAnimated = guild.icon.startsWith('a_');
+  const ext = isAnimated ? 'gif' : 'png';
+  return `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.${ext}?size=256`;
 }
 
-export function iconUrl(guild: Guild) {
-  return `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}`;
-}
+export function avatarUrl(user: {
+  id: string;
+  avatar?: string | null;
+  discriminator?: string;
+}): string {
+  if (user.avatar) {
+    const isAnimated = user.avatar.startsWith('a_');
+    const ext = isAnimated ? 'gif' : 'png';
+    return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.${ext}?size=256`;
+  }
 
-export function avatarUrl(user: UserInfo) {
-  return `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}?size=512`;
+  // Discord Default Avatar
+  if (!user.discriminator || user.discriminator === '0') {
+    try {
+      const shift22 = BigInt(22);
+      const mod6 = BigInt(6);
+      const index = Number((BigInt(user.id) >> shift22) % mod6);
+      return `https://cdn.discordapp.com/embed/avatars/${index}.png`;
+    } catch {
+      return `https://cdn.discordapp.com/embed/avatars/0.png`;
+    }
+  }
+
+  const index = Number(user.discriminator) % 5;
+  return `https://cdn.discordapp.com/embed/avatars/${index}.png`;
 }
 
 export function bannerUrl(id: string, banner: string): string {
-  return `https://cdn.discordapp.com/banners/${id}/${banner}?size=1024`;
+  const isAnimated = banner.startsWith('a_');
+  const ext = isAnimated ? 'gif' : 'png';
+  return `https://cdn.discordapp.com/banners/${id}/${banner}.${ext}?size=1024`;
 }

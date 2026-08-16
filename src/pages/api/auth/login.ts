@@ -7,11 +7,14 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     locale?: string;
   };
 
+  const redirectUri =
+    process.env.DISCORD_REDIRECT_URI || `${getAbsoluteUrl()}/api/auth/callback`;
+
   const url =
     'https://discord.com/api/oauth2/authorize?' +
     new URLSearchParams({
       client_id: CLIENT_ID,
-      redirect_uri: `${getAbsoluteUrl()}/api/auth/callback`,
+      redirect_uri: redirectUri,
       response_type: 'code',
       scope: 'identify guilds',
       state: locale ?? '',

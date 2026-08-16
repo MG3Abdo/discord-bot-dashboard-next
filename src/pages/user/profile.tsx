@@ -10,6 +10,7 @@ import {
   Image,
   useColorMode,
   Box,
+  Skeleton,
 } from '@chakra-ui/react';
 import { avatarUrl, bannerUrl } from '@/api/discord';
 import { SelectField } from '@/components/forms/SelectField';
@@ -21,13 +22,13 @@ import { useSettingsStore } from '@/stores';
 import { NextPageWithLayout } from '@/pages/_app';
 import AppLayout from '@/components/layout/app';
 import { useLogoutMutation } from '@/utils/auth/hooks';
-import { useSelfUser } from '@/api/hooks';
+import { useSelfUserQuery } from '@/api/hooks';
 
 /**
- * User info and general settings here
+ * User info and general settings
  */
 const ProfilePage: NextPageWithLayout = () => {
-  const user = useSelfUser();
+  const { data: user, isLoading } = useSelfUserQuery();
   const logout = useLogoutMutation();
   const t = profile.useTranslations();
 
@@ -38,7 +39,9 @@ const ProfilePage: NextPageWithLayout = () => {
   return (
     <Grid templateColumns={{ base: '1fr', lg: 'minmax(0, 800px) auto' }} gap={{ base: 3, lg: 6 }}>
       <Flex direction="column">
-        {user.banner != null ? (
+        {isLoading ? (
+          <Skeleton h="200px" rounded="2xl" />
+        ) : user?.banner != null ? (
           <Image
             alt="banner"
             src={bannerUrl(user.id, user.banner)}
@@ -47,20 +50,29 @@ const ProfilePage: NextPageWithLayout = () => {
             rounded="2xl"
           />
         ) : (
-          <Box bg="Brand" rounded="2xl" sx={{ aspectRatio: '1100 / 440' }} />
+          <Box bg="Brand" rounded="2xl" sx={{ aspectRatio: '1100 / 440' }} minH="140px" />
         )}
         <VStack mt="-50px" ml="40px" align="start">
-          <Avatar
-            src={avatarUrl(user)}
-            name={user.username}
-            w="100px"
-            h="100px"
-            ringColor="CardBackground"
-            ring="6px"
-          />
+          {isLoading ? (
+            <Skeleton w="100px" h="100px" rounded="full" />
+          ) : (
+            <Avatar
+              src={user ? avatarUrl(user) : undefined}
+              name={user?.username ?? 'User'}
+              w="100px"
+              h="100px"
+              ringColor="CardBackground"
+              ring="6px"
+            />
+          )}
           <Text fontWeight="600" fontSize="2xl">
-            {user.username}
+            {user?.global_name || user?.username || (isLoading ? 'Loading...' : 'User')}
           </Text>
+          {user?.id && (
+            <Text color="TextSecondary" fontSize="sm">
+              ID: {user.id}
+            </Text>
+          )}
         </VStack>
       </Flex>
       <Card w="full" rounded="3xl" h="fit-content" variant="primary">
@@ -112,14 +124,9 @@ const ProfilePage: NextPageWithLayout = () => {
           </Button>
         </CardBody>
       </Card>
-      <Content />
     </Grid>
   );
 };
-
-function Content() {
-  return <></>;
-}
 
 ProfilePage.getLayout = (p) => <AppLayout>{p}</AppLayout>;
 

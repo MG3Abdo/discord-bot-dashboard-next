@@ -1,5 +1,5 @@
 import { createIcon } from '@chakra-ui/react';
-import { PermissionFlags } from '@/api/discord';
+import { canManageGuild } from '@/api/discord';
 import { AppConfig } from './types';
 
 const BotIcon = createIcon({
@@ -25,7 +25,7 @@ export const config: AppConfig = {
   inviteUrl:
     'https://discord.com/oauth2/authorize?client_id=1241113199021916200&scope=bot&permissions=8',
   guild: {
-    //filter guilds that user has no permissions to manage it
-    filter: (guild) => (Number(guild.permissions) & PermissionFlags.ADMINISTRATOR) !== 0,
+    // filter guilds that user has permissions to manage (Administrator, Manage Server, or Server Owner)
+    filter: (guild) => canManageGuild(guild),
   },
 };

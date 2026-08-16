@@ -23,14 +23,14 @@ export function UserMenu(props: { color: string; shadow: string; bg: string }) {
         <Avatar
           _hover={{ cursor: 'pointer' }}
           color="white"
-          name={user.username}
-          src={avatarUrl(user)}
+          name={user?.username ?? 'User'}
+          src={user ? avatarUrl(user) : undefined}
           bg="#11047A"
           w="40px"
           h="40px"
         />
       </MenuButton>
-      <List user={user} shadow={props.shadow} menuBg={props.bg} textColor={props.color} />
+      {user && <List user={user} shadow={props.shadow} menuBg={props.bg} textColor={props.color} />}
     </Menu>
   );
 }
@@ -58,7 +58,7 @@ function List(props: { textColor: string; shadow: string; menuBg: string; user: 
           <span aria-label="Hi" role="img">
             👋
           </span>
-          &nbsp; Hey, {user.username}
+          &nbsp; Hey, {user.global_name || user.username}
         </Text>
       </Flex>
       <Flex flexDirection="column" p="10px">

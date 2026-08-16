@@ -7,6 +7,7 @@ import {
   Heading,
   HStack,
   IconButton,
+  Skeleton,
   Spacer,
   Stack,
   Text,
@@ -81,17 +82,31 @@ export function SidebarContent() {
 }
 
 export function BottomCard() {
-  const user = useSelfUserQuery().data;
+  const { data: user, isLoading } = useSelfUserQuery();
+
+  if (isLoading) {
+    return (
+      <Card pos="sticky" left={0} bottom={0} w="full" py={2}>
+        <CardBody as={HStack}>
+          <Skeleton w="32px" h="32px" rounded="full" />
+          <Skeleton w="80px" h="16px" rounded="md" />
+        </CardBody>
+      </Card>
+    );
+  }
+
   if (user == null) return <></>;
 
   return (
     <Card pos="sticky" left={0} bottom={0} w="full" py={2}>
       <CardBody as={HStack}>
         <Avatar src={avatarUrl(user)} name={user.username} size="sm" />
-        <Text fontWeight="600">{user.username}</Text>
+        <Text fontWeight="600" isTruncated maxW="120px">
+          {user.global_name || user.username}
+        </Text>
         <Spacer />
         <Link href="/user/profile">
-          <IconButton icon={<SettingsIcon />} aria-label="settings" />
+          <IconButton icon={<SettingsIcon />} aria-label="settings" size="sm" />
         </Link>
       </CardBody>
     </Card>
