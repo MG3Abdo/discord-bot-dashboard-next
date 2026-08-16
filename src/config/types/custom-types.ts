@@ -26,6 +26,16 @@ export type CustomFeatures = {
 };
 
 // 1. Tickets System
+export type TicketDepartment = {
+  id: string;
+  label: string;
+  value: string;
+  emoji?: string;
+  description?: string;
+  roleId?: string;
+  welcomeMessage?: string;
+};
+
 export type TicketsFeature = {
   panelChannelId?: string;
   categoryId?: string;
@@ -38,6 +48,7 @@ export type TicketsFeature = {
   embedDescription?: string;
   embedColor?: string;
   embedBannerUrl?: string;
+  departments?: TicketDepartment[];
 };
 
 // 2. Server Logs

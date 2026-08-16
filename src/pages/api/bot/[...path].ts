@@ -148,6 +148,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       let payload: any = {};
 
       if (targetFeature === 'tickets') {
+        const rawDepts = (config.departments && Array.isArray(config.departments) && config.departments.length > 0)
+          ? config.departments
+          : [
+              { label: 'Game Support', value: 'ARC', description: 'Game accounts, boosts, and keys', emoji: '🎮' },
+              { label: 'Orders & Inquiries', value: 'BUY_SELL', description: 'Store products & payments', emoji: '🛒' },
+              { label: 'Partner & Marketing', value: 'MARKETING', description: 'Partnership, ads & creator deals', emoji: '🤝' },
+              { label: 'CEO & Administration', value: 'SUPPORT_AND_INQUIRIES', description: 'Direct escalation with management', emoji: '👑' },
+            ];
+
+        const selectOptions = rawDepts.map((d: any, idx: number) => {
+          let emojiObj: any = undefined;
+          if (d.emoji) {
+            const trimmed = String(d.emoji).trim();
+            const customMatch = trimmed.match(/<a?:(\w+):(\d+)>/);
+            if (customMatch) {
+              emojiObj = { name: customMatch[1], id: customMatch[2] };
+            } else {
+              emojiObj = { name: trimmed };
+            }
+          }
+          return {
+            label: String(d.label || `Department ${idx + 1}`).slice(0, 100),
+            value: String(d.value || `DEPT_${idx + 1}`).slice(0, 100),
+            description: d.description ? String(d.description).slice(0, 100) : undefined,
+            emoji: emojiObj,
+          };
+        });
+
         payload = {
           embeds: [
             {
@@ -169,12 +197,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   type: 3, // StringSelect
                   custom_id: 'ticket_select_service',
                   placeholder: 'Select a department to open a ticket...',
-                  options: [
-                    { label: '🎮 Game Support', value: 'ARC', description: 'Game accounts, boosts, and keys', emoji: { name: '🎮' } },
-                    { label: '🛒 Orders & Inquiries', value: 'BUY_SELL', description: 'Store products & payments', emoji: { name: '🛒' } },
-                    { label: '🤝 Partner & Marketing', value: 'MARKETING', description: 'Partnership, ads & creator deals', emoji: { name: '🤝' } },
-                    { label: '👑 CEO & Administration', value: 'SUPPORT_AND_INQUIRIES', description: 'Direct escalation with management', emoji: { name: '👑' } },
-                  ],
+                  options: selectOptions,
                 },
               ],
             },
