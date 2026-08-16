@@ -74,8 +74,10 @@ export type WelcomeFeature = {
   welcomeColor?: string;
   welcomeBannerUrl?: string;
   autoRoleId?: string;
+  botAutoRoleId?: string;
   enableImage?: boolean;
   enableDm?: boolean;
+  dmMessage?: string;
   rulesChannelId?: string;
   ticketChannelId?: string;
   feedbackChannelId?: string;
@@ -132,14 +134,26 @@ export type MarketingRequestsFeature = {
 
 export type MarketingFeature = MarketingRequestsFeature;
 
-// 9. Reaction Roles
+// 9. Reaction Roles (Full Pro Customizer)
+export type ReactionRoleItem = {
+  id: string;
+  roleId: string;
+  label: string;
+  emoji?: string;
+  style?: 'primary' | 'secondary' | 'success' | 'danger';
+};
+
 export type ReactionRolesFeature = {
   channelId?: string;
+  panelTitle?: string;
+  panelDescription?: string;
+  panelColor?: string;
+  panelBannerUrl?: string;
+  items?: ReactionRoleItem[];
+  // Backward compatibility fields
   messageId?: string;
   roleId?: string;
   emoji?: string;
-  panelTitle?: string;
-  panelDescription?: string;
   reactionRoleChannelId?: string;
   arcRaidersRoleId?: string;
   overwatchRoleId?: string;

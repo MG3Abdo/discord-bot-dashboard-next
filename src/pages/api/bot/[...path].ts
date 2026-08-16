@@ -204,6 +204,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ],
         };
       } else if (targetFeature === 'reaction-roles') {
+        const items = (config.items && Array.isArray(config.items) && config.items.length > 0)
+          ? config.items
+          : [
+              { id: 'arc', label: 'ARC Raiders', emoji: '🏹', roleId: '' },
+              { id: 'ow2', label: 'Overwatch 2', emoji: '🛡️', roleId: '' },
+              { id: 'rl', label: 'Rocket League', emoji: '🏎️', roleId: '' },
+              { id: 'mr', label: 'Marvel Rivals', emoji: '⚡', roleId: '' },
+              { id: 'val', label: 'Valorant', emoji: '🎯', roleId: '' },
+              { id: 'cod', label: 'Call of Duty', emoji: '🔫', roleId: '' },
+              { id: 'fc', label: 'EA Sports FC', emoji: '⚽', roleId: '' },
+              { id: 'fivem', label: 'FiveM GTA', emoji: '🚗', roleId: '' },
+            ];
+
+        const rows: any[] = [];
+        let currentRow: any[] = [];
+
+        items.forEach((item: any, idx: number) => {
+          let emojiObj: any = undefined;
+          if (item.emoji) {
+            const trimmed = String(item.emoji).trim();
+            const customMatch = trimmed.match(/<a?:(\w+):(\d+)>/);
+            if (customMatch) {
+              emojiObj = { name: customMatch[1], id: customMatch[2] };
+            } else {
+              emojiObj = { name: trimmed };
+            }
+          }
+
+          currentRow.push({
+            type: 2, // Button
+            style: item.style === 'primary' ? 1 : item.style === 'success' ? 3 : item.style === 'danger' ? 4 : 2,
+            custom_id: `toggle_role:${item.roleId || item.id || idx}`,
+            label: String(item.label || `Role ${idx + 1}`).slice(0, 80),
+            emoji: emojiObj,
+          });
+
+          if (currentRow.length === 4 || idx === items.length - 1) {
+            rows.push({ type: 1, components: currentRow });
+            currentRow = [];
+          }
+        });
+
         payload = {
           embeds: [
             {
@@ -211,31 +253,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               description:
                 config.panelDescription ||
                 'Select the games you play by clicking the buttons below to receive updates, ping notifications, and unlock game channels!',
-              color: 0x7c3aed,
-              image: { url: 'https://i.imghos.co/MLyjjcyY.webp' },
+              color: parseInt((config.panelColor || '#7c3aed').replace('#', ''), 16) || 0x7c3aed,
+              image: config.panelBannerUrl ? { url: config.panelBannerUrl } : { url: 'https://i.imghos.co/MLyjjcyY.webp' },
               footer: { text: 'MG3 STORE • Auto Role Management' },
             },
           ],
-          components: [
-            {
-              type: 1,
-              components: [
-                { type: 2, style: 2, custom_id: 'role:arc', label: 'ARC Raiders', emoji: { name: '🏹' } },
-                { type: 2, style: 2, custom_id: 'role:ow2', label: 'Overwatch 2', emoji: { name: '🛡️' } },
-                { type: 2, style: 2, custom_id: 'role:rl', label: 'Rocket League', emoji: { name: '🏎️' } },
-                { type: 2, style: 2, custom_id: 'role:mr', label: 'Marvel Rivals', emoji: { name: '⚡' } },
-              ],
-            },
-            {
-              type: 1,
-              components: [
-                { type: 2, style: 2, custom_id: 'role:val', label: 'Valorant', emoji: { name: '🎯' } },
-                { type: 2, style: 2, custom_id: 'role:cod', label: 'Call of Duty', emoji: { name: '🔫' } },
-                { type: 2, style: 2, custom_id: 'role:fc', label: 'EA Sports FC', emoji: { name: '⚽' } },
-                { type: 2, style: 2, custom_id: 'role:fivem', label: 'FiveM GTA', emoji: { name: '🚗' } },
-              ],
-            },
-          ],
+          components: rows.slice(0, 5),
         };
       } else if (targetFeature === 'welcome') {
         payload = {

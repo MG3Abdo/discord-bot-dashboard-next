@@ -17,7 +17,7 @@ export const useWelcomeFeature: UseFormRender<WelcomeFeature> = (
   const guild = useRouter().query.guild as string;
   const { control, handleSubmit, reset, formState, watch } = useForm<WelcomeFeature>({
     defaultValues: {
-      channelId: initial?.channelId ?? '',
+      channelId: initial?.channelId ?? initial?.welcomeChannelId ?? '',
       welcomeTitle: initial?.welcomeTitle ?? '🎉 Welcome to {server}!',
       welcomeDescription:
         initial?.welcomeDescription ??
@@ -25,15 +25,17 @@ export const useWelcomeFeature: UseFormRender<WelcomeFeature> = (
       welcomeColor: initial?.welcomeColor ?? '#7c3aed',
       welcomeBannerUrl: initial?.welcomeBannerUrl ?? 'https://i.imghos.co/ntfWXhwt.png',
       autoRoleId: initial?.autoRoleId ?? '',
+      botAutoRoleId: initial?.botAutoRoleId ?? '',
       enableImage: initial?.enableImage ?? true,
       enableDm: initial?.enableDm ?? false,
+      dmMessage: initial?.dmMessage ?? 'Welcome {user} to {server}! Thanks for joining our community.',
     },
   });
 
   useEffect(() => {
     if (initial) {
       reset({
-        channelId: initial.channelId ?? '',
+        channelId: initial.channelId ?? initial.welcomeChannelId ?? '',
         welcomeTitle: initial.welcomeTitle ?? '🎉 Welcome to {server}!',
         welcomeDescription:
           initial.welcomeDescription ??
@@ -41,24 +43,29 @@ export const useWelcomeFeature: UseFormRender<WelcomeFeature> = (
         welcomeColor: initial.welcomeColor ?? '#7c3aed',
         welcomeBannerUrl: initial.welcomeBannerUrl ?? 'https://i.imghos.co/ntfWXhwt.png',
         autoRoleId: initial.autoRoleId ?? '',
+        botAutoRoleId: initial.botAutoRoleId ?? '',
         enableImage: initial.enableImage ?? true,
         enableDm: initial.enableDm ?? false,
+        dmMessage: initial.dmMessage ?? 'Welcome {user} to {server}! Thanks for joining our community.',
       });
     }
   }, [initial, reset]);
 
   const values = watch();
 
-  const exportText = `// MG3 Welcome Configuration for Guild: ${guild || 'GUILD_ID'}
+  const exportText = `// MG3 Welcome & Auto-Roles Configuration for Guild: ${guild || 'GUILD_ID'}
 module.exports = {
+  GUILD_ID: '${guild || 'GUILD_ID'}',
   WELCOME_CHANNEL_ID: '${values.channelId || ''}',
   AUTO_ROLE_ID: '${values.autoRoleId || ''}',
+  BOT_AUTO_ROLE_ID: '${values.botAutoRoleId || ''}',
   WELCOME_TITLE: '${values.welcomeTitle || '🎉 Welcome to {server}!'}',
   WELCOME_DESCRIPTION: '${(values.welcomeDescription || '').replace(/\n/g, ' ')}',
   WELCOME_COLOR: '${values.welcomeColor || '#7c3aed'}',
   WELCOME_BANNER_URL: '${values.welcomeBannerUrl || ''}',
   ENABLE_WELCOME_IMAGE: ${values.enableImage ? 'true' : 'false'},
-  ENABLE_WELCOME_DM: ${values.enableDm ? 'true' : 'false'}
+  ENABLE_WELCOME_DM: ${values.enableDm ? 'true' : 'false'},
+  DM_MESSAGE: '${(values.dmMessage || '').replace(/\n/g, ' ')}'
 };`;
 
   const onFormSubmit = async (data: WelcomeFeature) => {
@@ -72,7 +79,8 @@ module.exports = {
     onSubmit: handleSubmit(onFormSubmit),
     component: (
       <VStack spacing={5} align="stretch">
-        <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+        {/* Core Channel & Dual Auto-Role Setup */}
+        <SimpleGrid columns={{ base: 1, md: 3 }} gap={4}>
           <ChannelSelectForm
             control={{
               label: 'Welcome Channel',
@@ -82,16 +90,24 @@ module.exports = {
           />
           <RoleSelectForm
             control={{
-              label: 'Auto-Role (New Members)',
-              description: 'Role given automatically to all new members on joining.',
+              label: 'Member Auto-Role',
+              description: 'Role given automatically to human members on join.',
             }}
             controller={{ control, name: 'autoRoleId' }}
           />
+          <RoleSelectForm
+            control={{
+              label: 'Bot Auto-Role',
+              description: 'Role given automatically to newly invited Bots.',
+            }}
+            controller={{ control, name: 'botAutoRoleId' }}
+          />
         </SimpleGrid>
 
+        {/* Custom Welcome Embed Designer (Premium) */}
         <Box p={5} bg="CardBackground" rounded="2xl" border="1px solid" borderColor="whiteAlpha.100">
           <Heading fontSize="md" fontWeight="600" mb={1} color="purple.300">
-            🎨 Custom Welcome Embed Designer (Premium)
+            🎨 Custom Welcome Embed Designer (ProBot Style)
           </Heading>
           <Text fontSize="xs" color="TextSecondary" mb={4}>
             Supports dynamic placeholders: <code>{'{user}'}</code>, <code>{'{server}'}</code>, <code>{'{members}'}</code>
@@ -116,7 +132,7 @@ module.exports = {
             <InputForm
               control={{
                 label: 'Welcome Embed Message Body',
-                description: 'Custom rich text message sent to new members.',
+                description: 'Custom rich text message sent to new members in channel.',
               }}
               controller={{ control, name: 'welcomeDescription' }}
             />
@@ -132,6 +148,7 @@ module.exports = {
           </Box>
         </Box>
 
+        {/* DM and Canvas Image Settings */}
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
           <SwitchFieldForm
             control={{
@@ -148,6 +165,18 @@ module.exports = {
             controller={{ control, name: 'enableDm' }}
           />
         </SimpleGrid>
+
+        {values.enableDm && (
+          <Box p={4} bg="blackAlpha.400" rounded="xl" border="1px solid" borderColor="whiteAlpha.100">
+            <InputForm
+              control={{
+                label: 'Direct Message (DM) Content',
+                description: 'Private message sent to the member’s DMs on join.',
+              }}
+              controller={{ control, name: 'dmMessage' }}
+            />
+          </Box>
+        )}
 
         <ConfigExportCard
           title="Export Welcome Configuration"
