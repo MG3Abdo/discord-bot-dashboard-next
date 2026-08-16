@@ -1,28 +1,28 @@
 import { deepmerge } from 'deepmerge-ts';
 import { AccessToken } from '@/utils/auth/server';
-import { Options } from './core';
+import { Options, ReturnOptions } from './core';
 
-const bot_api_endpoint = process.env.NEXT_PUBLIC_API_ENDPOINT ?? 'http://localhost:8080';
-const discord_api_endpoint = 'https://discord.com/api/v9';
+// In Next.js client environment, use relative same-origin routing to hit our server-side API proxy
+const bot_api_endpoint = '';
+const discord_api_endpoint = '';
 
-export function botRequest<T extends Options>(session: AccessToken, options: T): T {
+export function botRequest<T extends Options | ReturnOptions<any>>(session: AccessToken, options: T): T {
   return {
     ...options,
     origin: bot_api_endpoint,
     request: deepmerge(
       {
         headers: {
-          Authorization: `${session.token_type} ${session.access_token}`,
+          'Content-Type': 'application/json',
+          Authorization: `${session?.token_type || 'Bearer'} ${session?.access_token || ''}`,
         },
-        credentials: 'include',
-        mode: 'cors',
       },
       options.request
     ),
   };
 }
 
-export function discordRequest<T extends Options>(accessToken: string, options: T): T {
+export function discordRequest<T extends Options | ReturnOptions<any>>(accessToken: string, options: T): T {
   return {
     ...options,
     origin: discord_api_endpoint,
