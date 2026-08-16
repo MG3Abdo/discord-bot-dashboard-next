@@ -20,7 +20,7 @@ const BotIcon = createIcon({
 });
 
 export const config: AppConfig = {
-  name: 'Demo Bot',
+  name: 'MG3 Nexus',
   icon: BotIcon,
   inviteUrl:
     'https://discord.com/oauth2/authorize?client_id=1241113199021916200&scope=bot&permissions=8',
