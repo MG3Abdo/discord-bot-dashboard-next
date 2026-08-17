@@ -473,9 +473,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                   .replace(/{server}/g, serverName)
                   .replace(/{user}/g, `<@${session.data.access_token ? 'User' : 'Member'}>`),
               color: parseInt((config.welcomeColor || '#7c3aed').replace('#', ''), 16) || 0x7c3aed,
-              fields,
-              image: { url: config.welcomeBannerUrl || config.welcomeImage || 'https://i.postimg.cc/W4N4TjZK/x9dv549.png' },
-              footer: { text: `Enjoy your stay in ${serverName}` },
+              footer: {
+                text: config.footerText || `Enjoy your stay in ${serverName}`,
+                icon_url:
+                  config.footerIconUrl ||
+                  'https://i.postimg.cc/XJ2QrWQW/37896d8b04703ee4b064e61b1af02fed.webp',
+              },
               timestamp: new Date().toISOString(),
             },
           ],
