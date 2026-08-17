@@ -438,17 +438,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           components: rows.slice(0, 5),
         };
       } else if (targetFeature === 'welcome') {
+        const EMOJI_POINT = '<a:1_:1538877031465488485>';
+        const EMOJI_HEART = '<a:redheart:1538877755507089558>';
+        const serverName = authCheck.guild?.name || 'Server';
+
+        const quickLinks = [];
+        if (config.rulesChannelId) quickLinks.push(`${EMOJI_POINT} **Rules:** <#${config.rulesChannelId}>`);
+        if (config.feedbackChannelId) quickLinks.push(`${EMOJI_POINT} **Feedback:** <#${config.feedbackChannelId}>`);
+        if (config.ticketChannelId) quickLinks.push(`${EMOJI_POINT} **Open Ticket:** <#${config.ticketChannelId}>`);
+        if (config.paymentChannelId) quickLinks.push(`${EMOJI_POINT} **Payment Methods:** <#${config.paymentChannelId}>`);
+        if (config.roleGamesChannelId) quickLinks.push(`${EMOJI_POINT} **Role Games:** <#${config.roleGamesChannelId}>`);
+
+        const fields = [];
+        if (quickLinks.length > 0) {
+          fields.push({
+            name: '`Quick Links`',
+            value: quickLinks.join('\n'),
+            inline: false,
+          });
+        }
+        fields.push({
+          name: '`Server Info`',
+          value: `**Invited By:** Unknown\n**Members Count:** \`Active\``,
+          inline: false,
+        });
+
         payload = {
+          content: `<@${session.data.access_token ? 'User' : 'Member'}>`,
           embeds: [
             {
-              title: (config.welcomeTitle || '🎉 WELCOME TO {server}').replace(/{server}/g, authCheck.guild?.name || 'our server'),
+              title: (config.welcomeTitle || '🎉 Welcome to {server}!').replace(/{server}/g, serverName),
               description:
-                (config.welcomeDescription || 'Welcome to **{server}**!\n\n✦ Please read the rules\n✦ Enjoy your stay!')
-                  .replace(/{server}/g, authCheck.guild?.name || 'our server')
+                (config.welcomeDescription || `${EMOJI_POINT} **Welcome** {user} **to** \`{server}\` ${EMOJI_HEART}`)
+                  .replace(/{server}/g, serverName)
                   .replace(/{user}/g, `<@${session.data.access_token ? 'User' : 'Member'}>`),
               color: parseInt((config.welcomeColor || '#7c3aed').replace('#', ''), 16) || 0x7c3aed,
-              image: config.welcomeBannerUrl ? { url: config.welcomeBannerUrl } : { url: 'https://i.imghos.co/ntfWXhwt.png' },
-              footer: { text: `${authCheck.guild?.name || 'Community'} • Welcome` },
+              fields,
+              image: { url: config.welcomeBannerUrl || config.welcomeImage || 'https://i.postimg.cc/W4N4TjZK/x9dv549.png' },
+              footer: { text: `Enjoy your stay in ${serverName}` },
+              timestamp: new Date().toISOString(),
             },
           ],
         };
