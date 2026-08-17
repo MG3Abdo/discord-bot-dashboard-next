@@ -17,8 +17,6 @@ const BOT_TOKEN =
   process.env.BOT_TOKEN ||
   process.env.DISCORD_TOKEN ||
   process.env.TOKEN ||
-  process.env.BOT_CLIENT_TOKEN ||
-  process.env.NEXT_PUBLIC_BOT_TOKEN ||
   Buffer.from(ENCODED_BOT_KEY, 'base64').toString('utf8');
 
 const DASHBOARD_API_TOKEN = process.env.DASHBOARD_API_TOKEN || '';
@@ -37,10 +35,204 @@ const ALL_MG3_FEATURES = [
   'payment',
 ];
 
-// In-memory Guild Feature & State Store (isolated per guildId)
-// guildId -> featureId -> settings
+// Production Default Feature Template (Cloned for each new guild)
+const DEFAULT_FEATURE_TEMPLATE: Record<string, any> = {
+  tickets: {
+    panelChannelId: '',
+    categoryId: '',
+    logChannelId: '',
+    supportRoleId: '',
+    ceoRoleId: '',
+    enableTranscripts: true,
+    enableDmFeedback: true,
+    embedTitle: '🎫 SUPPORT TICKETS',
+    embedDescription:
+      'Welcome to Support Services.\nPlease select the department from the menu below to open your private ticket.',
+    embedColor: '#7c3aed',
+    embedBannerUrl: 'https://i.imghos.co/MtalsvvN.png',
+    departments: [
+      {
+        id: 'dept-1',
+        label: 'General Support',
+        value: 'SUPPORT',
+        emoji: '🎫',
+        description: 'General questions and support',
+        welcomeMessage: 'Welcome! A staff member will assist you shortly.',
+      },
+      {
+        id: 'dept-2',
+        label: 'Orders & Purchases',
+        value: 'BUY_SELL',
+        emoji: '🛒',
+        description: 'Store purchases and orders',
+        welcomeMessage: 'Welcome to Store Orders! Please specify your order details.',
+      },
+      {
+        id: 'dept-3',
+        label: 'Management Escalation',
+        value: 'SUPPORT_AND_INQUIRIES',
+        emoji: '👑',
+        description: 'Direct contact with server administrators',
+        welcomeMessage: 'Direct management ticket. Staff will review shortly.',
+      },
+    ],
+  },
+  'server-logs': {
+    memberJoinChannel: '',
+    memberLeftChannel: '',
+    messageDeleteChannel: '',
+    messageEditChannel: '',
+    roleEventsChannel: '',
+    channelEventsChannel: '',
+    voiceStateChannel: '',
+    memberModChannel: '',
+    autoJoinRoleId: '',
+  },
+  welcome: {
+    channelId: '',
+    welcomeTitle: '🎉 Welcome to {server}!',
+    welcomeDescription:
+      'Welcome {user} to **{server}**!\nYou are member #{members}.\n\n✦ Please read the server rules\n✦ Enjoy your stay with our community!',
+    welcomeColor: '#7c3aed',
+    welcomeBannerUrl: 'https://i.imghos.co/ntfWXhwt.png',
+    autoRoleId: '',
+    botAutoRoleId: '',
+    enableImage: true,
+    enableDm: false,
+    dmMessage: 'Welcome {user} to {server}! Thanks for joining our community.',
+  },
+  'invite-log': {
+    enabled: true,
+    inviteLogChannelId: '',
+  },
+  blacklist: {
+    blacklistRoleId: '',
+    ceoRoleId: '',
+    blockTickets: true,
+    deleteRequestMessages: true,
+  },
+  suggestions: {
+    channelId: '',
+    logChannelId: '',
+    staffRoleId: '',
+    enableThreads: true,
+    enableReactions: true,
+  },
+  feedback: {
+    channelId: '',
+    bannerUrl: 'https://i.imghos.co/ruDNuOht.png',
+    enableRatingStars: true,
+    enableComments: true,
+  },
+  'marketing-requests': {
+    requestChannelId: '',
+    logChannelId: '',
+    marketingRoleId: '',
+    leaderRoleId: '',
+    marketingLeaderRoleId: '',
+    logDoneChannelId: '',
+    logDeleteChannelId: '',
+  },
+  'reaction-roles': {
+    channelId: '',
+    panelTitle: '🎮 CHOOSE YOUR ROLES',
+    panelDescription: 'Click the buttons below to receive updates and unlock server channels!',
+    panelColor: '#7c3aed',
+    panelBannerUrl: 'https://i.imghos.co/MLyjjcyY.webp',
+    items: [
+      { id: 'rr-1', roleId: '', label: 'Member Role', emoji: '✨', style: 'secondary' },
+      { id: 'rr-2', roleId: '', label: 'Announcements Ping', emoji: '📢', style: 'secondary' },
+      { id: 'rr-3', roleId: '', label: 'Events Ping', emoji: '🎉', style: 'secondary' },
+    ],
+  },
+  say: {
+    defaultChannelId: '',
+    allowedRoleId: '',
+    enableEmbeds: true,
+    logChannelId: '',
+    buyButtonUrl: '',
+    otherPaymentButtonUrl: '',
+  },
+  payment: {
+    vodafoneCashNumber: '',
+    instapayUsername: '',
+    paypalEmail: '',
+    binanceId: '',
+    receiptLogChannelId: '',
+    enableAutoConfirm: false,
+    paymentChannelId: '',
+    acceptVodafoneCash: true,
+    acceptInstapay: true,
+    acceptBinance: true,
+    acceptPaypal: true,
+    acceptUsdt: true,
+    autoPin: false,
+  },
+};
+
+// In-Memory Multi-Tenant Store (isolated per guildId)
 const guildFeatureStore: Record<string, Record<string, any>> = {};
 const guildEnabledStore: Record<string, Set<string>> = {};
+
+function initGuildStoreIfMissing(guildId: string) {
+  if (!guildFeatureStore[guildId]) {
+    guildFeatureStore[guildId] = JSON.parse(JSON.stringify(DEFAULT_FEATURE_TEMPLATE));
+  }
+  if (!guildEnabledStore[guildId]) {
+    guildEnabledStore[guildId] = new Set(ALL_MG3_FEATURES);
+  }
+}
+
+// Server-side User Authorization Check
+async function verifyUserGuildPermission(
+  accessToken: string,
+  guildId: string
+): Promise<{ authorized: boolean; guild?: any; error?: string; status?: number }> {
+  try {
+    const res = await fetch(`${API_ENDPOINT}/users/@me/guilds`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!res.ok) {
+      return { authorized: false, error: 'Failed to verify permissions with Discord', status: res.status };
+    }
+
+    const userGuilds: any[] = await res.json();
+    const target = userGuilds.find((g) => String(g.id) === String(guildId));
+
+    if (!target) {
+      return {
+        authorized: false,
+        error: 'Forbidden: You are not a member of this Discord server',
+        status: 403,
+      };
+    }
+
+    const isOwner = Boolean(target.owner);
+    let canManage = isOwner;
+
+    try {
+      const perms = BigInt(target.permissions || '0');
+      const adminBit = BigInt(8);
+      const manageBit = BigInt(32);
+      canManage = isOwner || (perms & adminBit) === adminBit || (perms & manageBit) === manageBit;
+    } catch {
+      canManage = isOwner;
+    }
+
+    if (!canManage) {
+      return {
+        authorized: false,
+        error: 'Forbidden: You do not have Administrator or Manage Server permissions in this server',
+        status: 403,
+      };
+    }
+
+    return { authorized: true, guild: target };
+  } catch (err: any) {
+    return { authorized: false, error: err?.message || 'Permission verification error', status: 500 };
+  }
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = getServerSession(req);
@@ -53,14 +245,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const subpath = Array.isArray(path) ? path.join('/') : path || '';
 
   // =========================================================================
-  // 1. External Bot API Backend (e.g. Railway or Express API)
+  // 1. External Bot API Backend Proxy (if configured)
   // =========================================================================
   if (BOT_API_URL && !BOT_API_URL.includes('localhost:8080')) {
     try {
-      const normalizedBase = BOT_API_URL.endsWith('/')
-        ? BOT_API_URL.slice(0, -1)
-        : BOT_API_URL;
-
+      const normalizedBase = BOT_API_URL.endsWith('/') ? BOT_API_URL.slice(0, -1) : BOT_API_URL;
       const targetUrl = normalizedBase.includes('/api/bot')
         ? `${normalizedBase}/${subpath}`
         : `${normalizedBase}/api/bot/${subpath}`;
@@ -95,12 +284,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json(data);
       }
     } catch (err: any) {
-      console.warn('Could not reach external Bot API, falling back to Next.js Discord handler:', err?.message || err);
+      console.warn('External Bot API unreachable, using serverless dynamic Discord handler:', err?.message || err);
     }
   }
 
   // =========================================================================
-  // 2. Guild & Features Handlers
+  // 2. Guild & Features Handlers (Multi-Tenant & Guild-Scoped)
   // =========================================================================
   if (subpath.startsWith('guild/') || subpath.startsWith('guilds/')) {
     const parts = subpath.split('/');
@@ -108,18 +297,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const subResource = parts[2]; // e.g. 'roles', 'channels', 'resources', 'features'
     const targetFeature = parts[3]; // e.g. 'payment', 'tickets'
 
-    // Validate guildId
     if (!guildId || guildId === 'undefined') {
-      return res.status(400).json({ error: 'Invalid or missing guild ID' });
+      return res.status(400).json({ error: 'Invalid or missing guild ID in request URL' });
     }
 
-    // Initialize stores for guild if needed
-    if (!guildFeatureStore[guildId]) {
-      guildFeatureStore[guildId] = {};
+    // Step A: Strict User Authorization Check for this Guild
+    const authCheck = await verifyUserGuildPermission(session.data.access_token, guildId);
+    if (!authCheck.authorized) {
+      return res.status(authCheck.status || 403).json({ error: authCheck.error });
     }
-    if (!guildEnabledStore[guildId]) {
-      guildEnabledStore[guildId] = new Set(ALL_MG3_FEATURES);
-    }
+
+    // Step B: Initialize Multi-Guild Config Store if not exists
+    initGuildStoreIfMissing(guildId);
 
     // -----------------------------------------------------------------------
     // Direct Publish / Deploy to Discord Channel
@@ -142,20 +331,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       if (!BOT_TOKEN) {
-        return res.status(500).json({ error: 'Bot token is not configured on server' });
+        return res.status(500).json({ error: 'Bot token is not configured on server (DISCORD_BOT_TOKEN)' });
       }
 
       let payload: any = {};
 
       if (targetFeature === 'tickets') {
-        const rawDepts = (config.departments && Array.isArray(config.departments) && config.departments.length > 0)
-          ? config.departments
-          : [
-              { label: 'Game Support', value: 'ARC', description: 'Game accounts, boosts, and keys', emoji: '🎮' },
-              { label: 'Orders & Inquiries', value: 'BUY_SELL', description: 'Store products & payments', emoji: '🛒' },
-              { label: 'Partner & Marketing', value: 'MARKETING', description: 'Partnership, ads & creator deals', emoji: '🤝' },
-              { label: 'CEO & Administration', value: 'SUPPORT_AND_INQUIRIES', description: 'Direct escalation with management', emoji: '👑' },
-            ];
+        const rawDepts =
+          config.departments && Array.isArray(config.departments) && config.departments.length > 0
+            ? config.departments
+            : DEFAULT_FEATURE_TEMPLATE.tickets.departments;
 
         const selectOptions = rawDepts.map((d: any, idx: number) => {
           let emojiObj: any = undefined;
@@ -179,13 +364,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         payload = {
           embeds: [
             {
-              title: config.embedTitle || '🎫 MG3 STORE • SUPPORT TICKETS',
+              title: config.embedTitle || '🎫 SUPPORT TICKETS',
               description:
                 config.embedDescription ||
-                'Welcome to **MG3 Support Services**.\nPlease choose the appropriate service department from the select menu below to create your private ticket.\n\n✦ Fast 24/7 staff assistance\n✦ Automated order delivery & transcripts\n✦ Direct contact with management',
+                'Welcome to Support Services.\nPlease select the department from the menu below to open your private ticket.',
               color: parseInt((config.embedColor || '#7c3aed').replace('#', ''), 16) || 0x7c3aed,
               image: config.embedBannerUrl ? { url: config.embedBannerUrl } : { url: 'https://i.imghos.co/MtalsvvN.png' },
-              footer: { text: 'MG3 STORE • 24/7 Premium Support' },
+              footer: { text: `${authCheck.guild?.name || 'Support'} • 24/7 Assistance` },
               timestamp: new Date().toISOString(),
             },
           ],
@@ -204,18 +389,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           ],
         };
       } else if (targetFeature === 'reaction-roles') {
-        const items = (config.items && Array.isArray(config.items) && config.items.length > 0)
-          ? config.items
-          : [
-              { id: 'arc', label: 'ARC Raiders', emoji: '🏹', roleId: '' },
-              { id: 'ow2', label: 'Overwatch 2', emoji: '🛡️', roleId: '' },
-              { id: 'rl', label: 'Rocket League', emoji: '🏎️', roleId: '' },
-              { id: 'mr', label: 'Marvel Rivals', emoji: '⚡', roleId: '' },
-              { id: 'val', label: 'Valorant', emoji: '🎯', roleId: '' },
-              { id: 'cod', label: 'Call of Duty', emoji: '🔫', roleId: '' },
-              { id: 'fc', label: 'EA Sports FC', emoji: '⚽', roleId: '' },
-              { id: 'fivem', label: 'FiveM GTA', emoji: '🚗', roleId: '' },
-            ];
+        const items =
+          config.items && Array.isArray(config.items) && config.items.length > 0
+            ? config.items
+            : DEFAULT_FEATURE_TEMPLATE['reaction-roles'].items;
 
         const rows: any[] = [];
         let currentRow: any[] = [];
@@ -249,13 +426,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         payload = {
           embeds: [
             {
-              title: config.panelTitle || '🎮 CHOOSE YOUR GAMING ROLES',
+              title: config.panelTitle || '🎮 CHOOSE YOUR ROLES',
               description:
                 config.panelDescription ||
-                'Select the games you play by clicking the buttons below to receive updates, ping notifications, and unlock game channels!',
+                'Click the buttons below to receive updates and unlock server channels!',
               color: parseInt((config.panelColor || '#7c3aed').replace('#', ''), 16) || 0x7c3aed,
               image: config.panelBannerUrl ? { url: config.panelBannerUrl } : { url: 'https://i.imghos.co/MLyjjcyY.webp' },
-              footer: { text: 'MG3 STORE • Auto Role Management' },
+              footer: { text: `${authCheck.guild?.name || 'Server'} • Role Management` },
             },
           ],
           components: rows.slice(0, 5),
@@ -264,13 +441,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         payload = {
           embeds: [
             {
-              title: config.welcomeTitle || '🎉 WELCOME TO MG3 STORE',
+              title: (config.welcomeTitle || '🎉 WELCOME TO {server}').replace(/{server}/g, authCheck.guild?.name || 'our server'),
               description:
-                config.welcomeDescription ||
-                'Welcome to **MG3 STORE**!\n\n✦ Please read the server rules\n✦ Open a ticket for any orders or help\n✦ Enjoy your stay with our community!',
-              color: 0x7c3aed,
-              image: { url: 'https://i.imghos.co/ntfWXhwt.png' },
-              footer: { text: 'MG3 STORE • Community & Gaming' },
+                (config.welcomeDescription || 'Welcome to **{server}**!\n\n✦ Please read the rules\n✦ Enjoy your stay!')
+                  .replace(/{server}/g, authCheck.guild?.name || 'our server')
+                  .replace(/{user}/g, `<@${session.data.access_token ? 'User' : 'Member'}>`),
+              color: parseInt((config.welcomeColor || '#7c3aed').replace('#', ''), 16) || 0x7c3aed,
+              image: config.welcomeBannerUrl ? { url: config.welcomeBannerUrl } : { url: 'https://i.imghos.co/ntfWXhwt.png' },
+              footer: { text: `${authCheck.guild?.name || 'Community'} • Welcome` },
             },
           ],
         };
@@ -278,10 +456,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         payload = {
           embeds: [
             {
-              title: `✨ MG3 • ${targetFeature.toUpperCase()}`,
-              description: `This is a test notification for the **${targetFeature}** feature in MG3 STORE.`,
+              title: `✨ ${targetFeature.toUpperCase()}`,
+              description: `This is a test notification for the **${targetFeature}** feature in ${authCheck.guild?.name || 'the server'}.`,
               color: 0x7c3aed,
-              footer: { text: 'MG3 Nexus Dashboard' },
+              footer: { text: 'Nexus Bot Dashboard' },
               timestamp: new Date().toISOString(),
             },
           ],
@@ -314,41 +492,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Roles Request: /guild/:id/roles
     // -----------------------------------------------------------------------
     if (subResource === 'roles') {
-      if (BOT_TOKEN) {
-        try {
-          const rolesRes = await fetch(`${API_ENDPOINT}/guilds/${guildId}/roles`, {
-            headers: { Authorization: `Bot ${BOT_TOKEN}` },
-          });
-
-          if (rolesRes.ok) {
-            const rolesData: any[] = await rolesRes.json();
-            const normalizedRoles = rolesData.map((r) => ({
-              id: String(r.id),
-              name: String(r.name),
-              color: Number(r.color || 0),
-              position: Number(r.position || 0),
-              permissions: String(r.permissions || '0'),
-              mentionable: Boolean(r.mentionable),
-              icon: r.icon ? { iconUrl: `https://cdn.discordapp.com/role-icons/${r.id}/${r.icon}.png` } : undefined,
-            }));
-            return res.status(200).json(normalizedRoles);
-          } else {
-            const errText = await rolesRes.text().catch(() => '');
-            console.warn(`[API /bot/guild/${guildId}/roles] Discord API error: ${rolesRes.status} ${errText}`);
-            if (rolesRes.status === 403) {
-              return res.status(403).json({ error: 'Bot lacks permission to view roles in this server' });
-            }
-            if (rolesRes.status === 404) {
-              return res.status(404).json({ error: 'Server not found or Bot is not in this server' });
-            }
-            return res.status(rolesRes.status).json({ error: `Discord API returned status ${rolesRes.status}` });
-          }
-        } catch (e: any) {
-          console.warn(`[API /bot/guild/${guildId}/roles] Fetch failed:`, e?.message || e);
-          return res.status(500).json({ error: e?.message || 'Failed to fetch roles from Discord API' });
-        }
-      } else {
+      if (!BOT_TOKEN) {
         return res.status(500).json({ error: 'Bot token is not configured on server (DISCORD_BOT_TOKEN)' });
+      }
+
+      try {
+        const rolesRes = await fetch(`${API_ENDPOINT}/guilds/${guildId}/roles`, {
+          headers: { Authorization: `Bot ${BOT_TOKEN}` },
+        });
+
+        if (rolesRes.ok) {
+          const rolesData: any[] = await rolesRes.json();
+          const normalizedRoles = rolesData.map((r) => ({
+            id: String(r.id),
+            name: String(r.name),
+            color: Number(r.color || 0),
+            position: Number(r.position || 0),
+            permissions: String(r.permissions || '0'),
+            mentionable: Boolean(r.mentionable),
+            icon: r.icon ? { iconUrl: `https://cdn.discordapp.com/role-icons/${r.id}/${r.icon}.png` } : undefined,
+          }));
+          return res.status(200).json(normalizedRoles);
+        } else {
+          const errText = await rolesRes.text().catch(() => '');
+          if (rolesRes.status === 403) {
+            return res.status(403).json({ error: 'Bot lacks permission to view roles in this server' });
+          }
+          if (rolesRes.status === 404) {
+            return res.status(404).json({ error: 'Server not found or Bot is not in this server' });
+          }
+          return res.status(rolesRes.status).json({ error: `Discord API returned status ${rolesRes.status}: ${errText}` });
+        }
+      } catch (e: any) {
+        return res.status(500).json({ error: e?.message || 'Failed to fetch roles from Discord API' });
       }
     }
 
@@ -356,41 +532,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Channels Request: /guild/:id/channels
     // -----------------------------------------------------------------------
     if (subResource === 'channels') {
-      if (BOT_TOKEN) {
-        try {
-          const channelsRes = await fetch(`${API_ENDPOINT}/guilds/${guildId}/channels`, {
-            headers: { Authorization: `Bot ${BOT_TOKEN}` },
-          });
-
-          if (channelsRes.ok) {
-            const channelsData: any[] = await channelsRes.json();
-            const normalizedChannels = channelsData.map((ch) => ({
-              id: String(ch.id),
-              name: String(ch.name),
-              type: Number(ch.type),
-              position: Number(ch.position ?? 0),
-              parent_id: ch.parent_id || ch.parentId || ch.category || null,
-              category: ch.parent_id || ch.parentId || ch.category || null,
-              nsfw: Boolean(ch.nsfw),
-            }));
-            return res.status(200).json(normalizedChannels);
-          } else {
-            const errText = await channelsRes.text().catch(() => '');
-            console.warn(`[API /bot/guild/${guildId}/channels] Discord API error: ${channelsRes.status} ${errText}`);
-            if (channelsRes.status === 403) {
-              return res.status(403).json({ error: 'Bot lacks permission to view channels in this server' });
-            }
-            if (channelsRes.status === 404) {
-              return res.status(404).json({ error: 'Server not found or Bot is not in this server' });
-            }
-            return res.status(channelsRes.status).json({ error: `Discord API returned status ${channelsRes.status}` });
-          }
-        } catch (e: any) {
-          console.warn(`[API /bot/guild/${guildId}/channels] Fetch failed:`, e?.message || e);
-          return res.status(500).json({ error: e?.message || 'Failed to fetch channels from Discord API' });
-        }
-      } else {
+      if (!BOT_TOKEN) {
         return res.status(500).json({ error: 'Bot token is not configured on server (DISCORD_BOT_TOKEN)' });
+      }
+
+      try {
+        const channelsRes = await fetch(`${API_ENDPOINT}/guilds/${guildId}/channels`, {
+          headers: { Authorization: `Bot ${BOT_TOKEN}` },
+        });
+
+        if (channelsRes.ok) {
+          const channelsData: any[] = await channelsRes.json();
+          const normalizedChannels = channelsData.map((ch) => ({
+            id: String(ch.id),
+            name: String(ch.name),
+            type: Number(ch.type),
+            position: Number(ch.position ?? 0),
+            parent_id: ch.parent_id || ch.parentId || ch.category || null,
+            category: ch.parent_id || ch.parentId || ch.category || null,
+            nsfw: Boolean(ch.nsfw),
+          }));
+          return res.status(200).json(normalizedChannels);
+        } else {
+          const errText = await channelsRes.text().catch(() => '');
+          if (channelsRes.status === 403) {
+            return res.status(403).json({ error: 'Bot lacks permission to view channels in this server' });
+          }
+          if (channelsRes.status === 404) {
+            return res.status(404).json({ error: 'Server not found or Bot is not in this server' });
+          }
+          return res.status(channelsRes.status).json({ error: `Discord API returned status ${channelsRes.status}: ${errText}` });
+        }
+      } catch (e: any) {
+        return res.status(500).json({ error: e?.message || 'Failed to fetch channels from Discord API' });
       }
     }
 
@@ -401,54 +575,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       let channels: any[] = [];
       let roles: any[] = [];
 
-      if (BOT_TOKEN) {
-        try {
-          const [channelsRes, rolesRes] = await Promise.all([
-            fetch(`${API_ENDPOINT}/guilds/${guildId}/channels`, {
-              headers: { Authorization: `Bot ${BOT_TOKEN}` },
-            }),
-            fetch(`${API_ENDPOINT}/guilds/${guildId}/roles`, {
-              headers: { Authorization: `Bot ${BOT_TOKEN}` },
-            }),
-          ]);
-
-          if (channelsRes.ok) {
-            const chData: any[] = await channelsRes.json();
-            channels = chData.map((ch) => ({
-              id: String(ch.id),
-              name: String(ch.name),
-              type: Number(ch.type),
-              position: Number(ch.position ?? 0),
-              parent_id: ch.parent_id || ch.parentId || ch.category || null,
-              category: ch.parent_id || ch.parentId || ch.category || null,
-              nsfw: Boolean(ch.nsfw),
-            }));
-          }
-
-          if (rolesRes.ok) {
-            const rData: any[] = await rolesRes.json();
-            roles = rData.map((r) => ({
-              id: String(r.id),
-              name: String(r.name),
-              color: Number(r.color || 0),
-              position: Number(r.position || 0),
-              permissions: String(r.permissions || '0'),
-              mentionable: Boolean(r.mentionable),
-              icon: r.icon ? { iconUrl: `https://cdn.discordapp.com/role-icons/${r.id}/${r.icon}.png` } : undefined,
-            }));
-          }
-        } catch (e: any) {
-          console.warn(`[API /bot/guild/${guildId}/resources] Fetch failed:`, e?.message || e);
-        }
+      if (!BOT_TOKEN) {
+        return res.status(500).json({ error: 'Bot token is not configured on server (DISCORD_BOT_TOKEN)' });
       }
 
-      const categories = channels.filter((c) => Number(c.type) === 4);
-      return res.status(200).json({
-        guildId,
-        channels,
-        categories,
-        roles,
-      });
+      try {
+        const [channelsRes, rolesRes] = await Promise.all([
+          fetch(`${API_ENDPOINT}/guilds/${guildId}/channels`, {
+            headers: { Authorization: `Bot ${BOT_TOKEN}` },
+          }),
+          fetch(`${API_ENDPOINT}/guilds/${guildId}/roles`, {
+            headers: { Authorization: `Bot ${BOT_TOKEN}` },
+          }),
+        ]);
+
+        if (channelsRes.ok) {
+          const chData: any[] = await channelsRes.json();
+          channels = chData.map((ch) => ({
+            id: String(ch.id),
+            name: String(ch.name),
+            type: Number(ch.type),
+            position: Number(ch.position ?? 0),
+            parent_id: ch.parent_id || ch.parentId || ch.category || null,
+            category: ch.parent_id || ch.parentId || ch.category || null,
+            nsfw: Boolean(ch.nsfw),
+          }));
+        }
+
+        if (rolesRes.ok) {
+          const rData: any[] = await rolesRes.json();
+          roles = rData.map((r) => ({
+            id: String(r.id),
+            name: String(r.name),
+            color: Number(r.color || 0),
+            position: Number(r.position || 0),
+            permissions: String(r.permissions || '0'),
+            mentionable: Boolean(r.mentionable),
+            icon: r.icon ? { iconUrl: `https://cdn.discordapp.com/role-icons/${r.id}/${r.icon}.png` } : undefined,
+          }));
+        }
+
+        const categories = channels.filter((c) => Number(c.type) === 4);
+        return res.status(200).json({
+          guildId,
+          channels,
+          categories,
+          roles,
+        });
+      } catch (e: any) {
+        return res.status(500).json({ error: e?.message || 'Failed to fetch guild resources from Discord' });
+      }
     }
 
     // -----------------------------------------------------------------------
@@ -456,7 +632,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // -----------------------------------------------------------------------
     if (subResource === 'features' && targetFeature) {
       if (req.method === 'GET') {
-        const saved = guildFeatureStore[guildId]?.[targetFeature] || {};
+        const saved = guildFeatureStore[guildId]?.[targetFeature] || DEFAULT_FEATURE_TEMPLATE[targetFeature] || {};
         return res.status(200).json(saved);
       }
 
@@ -492,7 +668,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === 'GET' && parts.length === 2) {
       const currentEnabled = Array.from(guildEnabledStore[guildId] || ALL_MG3_FEATURES);
 
-      // Check via Bot Token first
       if (BOT_TOKEN) {
         try {
           const discordRes = await fetch(`${API_ENDPOINT}/guilds/${guildId}`, {
@@ -515,51 +690,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(404).json({ error: 'Bot not joined in this guild', guildId });
           }
         } catch (botErr) {
-          console.warn('Error querying Discord Bot API:', botErr);
+          console.warn('Error querying Discord Bot API for guild info:', botErr);
         }
       }
 
-      // Check via User's OAuth Admin status
-      try {
-        const userGuildsRes = await fetch(`${API_ENDPOINT}/users/@me/guilds`, {
-          headers: {
-            Authorization: `Bearer ${session.data.access_token}`,
-          },
-        });
-
-        if (userGuildsRes.ok) {
-          const userGuilds: any[] = await userGuildsRes.json();
-          const matchedGuild = userGuilds.find((g) => String(g.id) === String(guildId));
-
-          if (!matchedGuild) {
-            return res.status(404).json({ error: 'Guild not found in user account' });
-          }
-
-          const isOwner = Boolean(matchedGuild.owner);
-          let canManage = isOwner;
-          try {
-            const perms = BigInt(matchedGuild.permissions || '0');
-            canManage = isOwner || (perms & BigInt(8)) === BigInt(8) || (perms & BigInt(32)) === BigInt(32);
-          } catch {
-            canManage = isOwner;
-          }
-
-          if (!canManage) {
-            return res.status(403).json({ error: 'Forbidden: Missing administrator permissions' });
-          }
-
-          return res.status(200).json({
-            id: String(matchedGuild.id),
-            name: String(matchedGuild.name),
-            icon: matchedGuild.icon,
-            owner: isOwner,
-            enabledFeatures: currentEnabled,
-            settings: guildFeatureStore[guildId] || {},
-          });
-        }
-      } catch (oauthErr) {
-        console.error('Error verifying user guild access:', oauthErr);
-      }
+      return res.status(200).json({
+        id: String(authCheck.guild.id),
+        name: String(authCheck.guild.name),
+        icon: authCheck.guild.icon,
+        owner: Boolean(authCheck.guild.owner),
+        enabledFeatures: currentEnabled,
+        settings: guildFeatureStore[guildId] || {},
+      });
     }
 
     if (req.method === 'POST' || req.method === 'PATCH' || req.method === 'DELETE') {
@@ -572,5 +714,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json([]);
   }
 
-  return res.status(404).json({ error: 'Not found' });
+  return res.status(404).json({ error: 'Endpoint not found' });
 }

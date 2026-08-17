@@ -23,7 +23,7 @@ import AppLayout from '@/components/layout/app';
 import { iconUrl } from '@/api/discord';
 import { dashboard } from '@/config/translations/dashboard';
 import Link from 'next/link';
-import { FaRobot, FaServer, FaCrown } from 'react-icons/fa';
+import { FaRobot, FaServer, FaCrown, FaPlus } from 'react-icons/fa';
 import { IoOpen, IoShieldCheckmark } from 'react-icons/io5';
 import { MdMessage, MdSecurity, MdSpeed } from 'react-icons/md';
 import { FiArrowRight, FiUser } from 'react-icons/fi';
@@ -63,7 +63,7 @@ const HomePage: NextPageWithLayout = () => {
                   : t.hero.title}
               </Heading>
               <Badge colorScheme="green" px={2} py={0.5} rounded="md" fontSize="xs">
-                Online
+                Public Multi-Guild Bot
               </Badge>
             </HStack>
             <Text color="whiteAlpha.900" fontSize={{ base: 'sm', md: 'md' }}>
@@ -229,59 +229,80 @@ export function GuildSelect() {
 
   return (
     <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} gap={4}>
-      {manageableGuilds.map((guild) => (
-        <Card
-          key={guild.id}
-          variant="primary"
-          as={Link}
-          href={`/guilds/${guild.id}`}
-          rounded="2xl"
-          cursor="pointer"
-          transition="all 0.2s ease-in-out"
-          _hover={{
-            transform: 'translateY(-2px)',
-            shadow: 'lg',
-            borderColor: 'Brand',
-          }}
-          p={1}
-        >
-          <CardBody as={Flex} alignItems="center" gap={4} p={4}>
-            <Avatar
-              src={iconUrl(guild)}
-              name={guild.name}
-              size="md"
-              rounded="xl"
-              border="2px solid"
-              borderColor="whiteAlpha.300"
-            />
-            <Box flex={1} minW={0}>
-              <Text fontWeight="bold" fontSize="md" isTruncated>
-                {guild.name}
-              </Text>
-              <HStack spacing={1} mt={0.5}>
-                <Icon
-                  as={guild.owner ? FaCrown : IoShieldCheckmark}
-                  color={guild.owner ? 'yellow.500' : 'green.500'}
-                  w={3.5}
-                  h={3.5}
-                />
-                <Text fontSize="xs" color="TextSecondary">
-                  {guild.owner ? 'Server Owner' : 'Administrator'}
+      {manageableGuilds.map((guild) => {
+        const isBotJoined = (guild as any).botJoined !== false;
+        const inviteUrlWithGuild = `https://discord.com/oauth2/authorize?client_id=1241113199021916200&permissions=8&scope=bot%20applications.commands&guild_id=${guild.id}&disable_guild_select=true`;
+
+        return (
+          <Card
+            key={guild.id}
+            variant="primary"
+            as={isBotJoined ? Link : 'a'}
+            href={isBotJoined ? `/guilds/${guild.id}` : inviteUrlWithGuild}
+            target={isBotJoined ? undefined : '_blank'}
+            rel={isBotJoined ? undefined : 'noopener noreferrer'}
+            rounded="2xl"
+            cursor="pointer"
+            transition="all 0.2s ease-in-out"
+            _hover={{
+              transform: 'translateY(-2px)',
+              shadow: 'lg',
+              borderColor: 'Brand',
+            }}
+            p={1}
+          >
+            <CardBody as={Flex} alignItems="center" gap={4} p={4}>
+              <Avatar
+                src={iconUrl(guild)}
+                name={guild.name}
+                size="md"
+                rounded="xl"
+                border="2px solid"
+                borderColor="whiteAlpha.300"
+              />
+              <Box flex={1} minW={0}>
+                <Text fontWeight="bold" fontSize="md" isTruncated>
+                  {guild.name}
                 </Text>
-              </HStack>
-            </Box>
-            <Button
-              size="xs"
-              variant="action"
-              rounded="lg"
-              rightIcon={<FiArrowRight />}
-              pointerEvents="none"
-            >
-              {t.servers.manage}
-            </Button>
-          </CardBody>
-        </Card>
-      ))}
+                <HStack spacing={1} mt={0.5}>
+                  <Icon
+                    as={guild.owner ? FaCrown : IoShieldCheckmark}
+                    color={guild.owner ? 'yellow.500' : 'green.500'}
+                    w={3.5}
+                    h={3.5}
+                  />
+                  <Text fontSize="xs" color="TextSecondary">
+                    {guild.owner ? 'Owner' : 'Admin'}
+                  </Text>
+                </HStack>
+              </Box>
+
+              {isBotJoined ? (
+                <Button
+                  size="xs"
+                  variant="action"
+                  rounded="lg"
+                  rightIcon={<FiArrowRight />}
+                  pointerEvents="none"
+                >
+                  {t.servers.manage}
+                </Button>
+              ) : (
+                <Button
+                  size="xs"
+                  colorScheme="purple"
+                  variant="outline"
+                  rounded="lg"
+                  leftIcon={<FaPlus />}
+                  pointerEvents="none"
+                >
+                  Setup Bot
+                </Button>
+              )}
+            </CardBody>
+          </Card>
+        );
+      })}
     </SimpleGrid>
   );
 }
