@@ -86,6 +86,8 @@ export type WelcomeFeature = {
   pingInviter?: boolean;
   showQuickLinks?: boolean;
   showServerInfo?: boolean;
+  footerIconUrl?: string;
+  footerText?: string;
 };
 
 // 4. Invite Logger

@@ -21,14 +21,25 @@ export const useWelcomeFeature: UseFormRender<WelcomeFeature> = (
       welcomeTitle: initial?.welcomeTitle ?? '🎉 Welcome to {server}!',
       welcomeDescription:
         initial?.welcomeDescription ??
-        'Welcome {user} to **{server}**!\nYou are member #{members}.\n\n✦ Please read the server rules\n✦ Check game roles to unlock channels\n✦ Open a ticket if you need any help!',
+        '<a:1_:1538877031465488485> **Welcome** {user} **to** `{server}` <a:redheart:1538877755507089558>',
       welcomeColor: initial?.welcomeColor ?? '#7c3aed',
-      welcomeBannerUrl: initial?.welcomeBannerUrl ?? 'https://i.imghos.co/ntfWXhwt.png',
+      welcomeBannerUrl: initial?.welcomeBannerUrl ?? '',
+      footerIconUrl:
+        initial?.footerIconUrl ??
+        'https://i.postimg.cc/XJ2QrWQW/37896d8b04703ee4b064e61b1af02fed.webp',
+      footerText: initial?.footerText ?? 'Enjoy your stay in {server}',
       autoRoleId: initial?.autoRoleId ?? '',
       botAutoRoleId: initial?.botAutoRoleId ?? '',
       enableImage: initial?.enableImage ?? true,
       enableDm: initial?.enableDm ?? false,
       dmMessage: initial?.dmMessage ?? 'Welcome {user} to {server}! Thanks for joining our community.',
+      rulesChannelId: initial?.rulesChannelId ?? '',
+      ticketChannelId: initial?.ticketChannelId ?? '',
+      feedbackChannelId: initial?.feedbackChannelId ?? '',
+      paymentChannelId: initial?.paymentChannelId ?? '',
+      roleGamesChannelId: initial?.roleGamesChannelId ?? '',
+      showQuickLinks: initial?.showQuickLinks ?? true,
+      showServerInfo: initial?.showServerInfo ?? true,
     },
   });
 
@@ -39,14 +50,25 @@ export const useWelcomeFeature: UseFormRender<WelcomeFeature> = (
         welcomeTitle: initial.welcomeTitle ?? '🎉 Welcome to {server}!',
         welcomeDescription:
           initial.welcomeDescription ??
-          'Welcome {user} to **{server}**!\nYou are member #{members}.\n\n✦ Please read the server rules\n✦ Check game roles to unlock channels\n✦ Open a ticket if you need any help!',
+          '<a:1_:1538877031465488485> **Welcome** {user} **to** `{server}` <a:redheart:1538877755507089558>',
         welcomeColor: initial.welcomeColor ?? '#7c3aed',
-        welcomeBannerUrl: initial.welcomeBannerUrl ?? 'https://i.imghos.co/ntfWXhwt.png',
+        welcomeBannerUrl: initial.welcomeBannerUrl ?? '',
+        footerIconUrl:
+          initial.footerIconUrl ??
+          'https://i.postimg.cc/XJ2QrWQW/37896d8b04703ee4b064e61b1af02fed.webp',
+        footerText: initial.footerText ?? 'Enjoy your stay in {server}',
         autoRoleId: initial.autoRoleId ?? '',
         botAutoRoleId: initial.botAutoRoleId ?? '',
         enableImage: initial.enableImage ?? true,
         enableDm: initial.enableDm ?? false,
         dmMessage: initial.dmMessage ?? 'Welcome {user} to {server}! Thanks for joining our community.',
+        rulesChannelId: initial.rulesChannelId ?? '',
+        ticketChannelId: initial.ticketChannelId ?? '',
+        feedbackChannelId: initial.feedbackChannelId ?? '',
+        paymentChannelId: initial.paymentChannelId ?? '',
+        roleGamesChannelId: initial.roleGamesChannelId ?? '',
+        showQuickLinks: initial.showQuickLinks ?? true,
+        showServerInfo: initial.showServerInfo ?? true,
       });
     }
   }, [initial, reset]);
@@ -59,11 +81,16 @@ module.exports = {
   WELCOME_CHANNEL_ID: '${values.channelId || ''}',
   AUTO_ROLE_ID: '${values.autoRoleId || ''}',
   BOT_AUTO_ROLE_ID: '${values.botAutoRoleId || ''}',
+  RULES_CHANNEL_ID: '${values.rulesChannelId || ''}',
+  TICKET_CHANNEL_ID: '${values.ticketChannelId || ''}',
+  FEEDBACK_CHANNEL_ID: '${values.feedbackChannelId || ''}',
+  PAYMENT_CHANNEL_ID: '${values.paymentChannelId || ''}',
+  ROLE_GAMES_CHANNEL_ID: '${values.roleGamesChannelId || ''}',
   WELCOME_TITLE: '${values.welcomeTitle || '🎉 Welcome to {server}!'}',
   WELCOME_DESCRIPTION: '${(values.welcomeDescription || '').replace(/\n/g, ' ')}',
   WELCOME_COLOR: '${values.welcomeColor || '#7c3aed'}',
-  WELCOME_BANNER_URL: '${values.welcomeBannerUrl || ''}',
-  ENABLE_WELCOME_IMAGE: ${values.enableImage ? 'true' : 'false'},
+  FOOTER_ICON_URL: '${values.footerIconUrl || ''}',
+  FOOTER_TEXT: '${values.footerText || ''}',
   ENABLE_WELCOME_DM: ${values.enableDm ? 'true' : 'false'},
   DM_MESSAGE: '${(values.dmMessage || '').replace(/\n/g, ' ')}'
 };`;
@@ -84,7 +111,7 @@ module.exports = {
           <ChannelSelectForm
             control={{
               label: 'Welcome Channel',
-              description: 'Channel where welcome embeds and cards are posted.',
+              description: 'Channel where welcome embeds are posted.',
             }}
             controller={{ control, name: 'channelId' }}
           />
@@ -104,10 +131,57 @@ module.exports = {
           />
         </SimpleGrid>
 
-        {/* Custom Welcome Embed Designer (Premium) */}
+        {/* Quick Links Configuration */}
         <Box p={5} bg="CardBackground" rounded="2xl" border="1px solid" borderColor="whiteAlpha.100">
           <Heading fontSize="md" fontWeight="600" mb={1} color="purple.300">
-            🎨 Custom Welcome Embed Designer (ProBot Style)
+            🔗 Quick Links Channels (Custom Point Emojis)
+          </Heading>
+          <Text fontSize="xs" color="TextSecondary" mb={4}>
+            Configure the channels linked in the welcome embed (Rules, Feedback, Tickets, etc.)
+          </Text>
+          <SimpleGrid columns={{ base: 1, md: 3 }} gap={4}>
+            <ChannelSelectForm
+              control={{
+                label: 'Rules Channel',
+                description: 'Channel for server rules.',
+              }}
+              controller={{ control, name: 'rulesChannelId' }}
+            />
+            <ChannelSelectForm
+              control={{
+                label: 'Feedback Channel',
+                description: 'Channel for customer reviews.',
+              }}
+              controller={{ control, name: 'feedbackChannelId' }}
+            />
+            <ChannelSelectForm
+              control={{
+                label: 'Open Ticket Channel',
+                description: 'Channel for support tickets.',
+              }}
+              controller={{ control, name: 'ticketChannelId' }}
+            />
+            <ChannelSelectForm
+              control={{
+                label: 'Payment Methods Channel',
+                description: 'Channel for store payment methods (optional).',
+              }}
+              controller={{ control, name: 'paymentChannelId' }}
+            />
+            <ChannelSelectForm
+              control={{
+                label: 'Role Games Channel',
+                description: 'Channel for reaction roles / game roles (optional).',
+              }}
+              controller={{ control, name: 'roleGamesChannelId' }}
+            />
+          </SimpleGrid>
+        </Box>
+
+        {/* Custom Welcome Embed Designer */}
+        <Box p={5} bg="CardBackground" rounded="2xl" border="1px solid" borderColor="whiteAlpha.100">
+          <Heading fontSize="md" fontWeight="600" mb={1} color="purple.300">
+            🎨 Custom Welcome Embed Designer
           </Heading>
           <Text fontSize="xs" color="TextSecondary" mb={4}>
             Supports dynamic placeholders: <code>{'{user}'}</code>, <code>{'{server}'}</code>, <code>{'{members}'}</code>
@@ -137,25 +211,32 @@ module.exports = {
               controller={{ control, name: 'welcomeDescription' }}
             />
           </Box>
-          <Box mt={4}>
+          <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} mt={4}>
             <InputForm
               control={{
-                label: 'Welcome Banner Image URL',
-                description: 'Large animated/static banner image displayed on join.',
+                label: 'Footer Text',
+                description: 'Text shown at bottom (e.g. Enjoy your stay in {server}).',
               }}
-              controller={{ control, name: 'welcomeBannerUrl' }}
+              controller={{ control, name: 'footerText' }}
             />
-          </Box>
+            <InputForm
+              control={{
+                label: 'Footer Icon URL (Small Image)',
+                description: 'Small icon URL displayed next to the footer text.',
+              }}
+              controller={{ control, name: 'footerIconUrl' }}
+            />
+          </SimpleGrid>
         </Box>
 
         {/* DM and Canvas Image Settings */}
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
           <SwitchFieldForm
             control={{
-              label: 'Welcome Card Banner Image',
-              description: 'Generate dynamic canvas welcome card image.',
+              label: 'Show Quick Links in Welcome',
+              description: 'Include the Quick Links section in the welcome embed.',
             }}
-            controller={{ control, name: 'enableImage' }}
+            controller={{ control, name: 'showQuickLinks' }}
           />
           <SwitchFieldForm
             control={{
