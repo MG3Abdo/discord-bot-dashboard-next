@@ -30,10 +30,18 @@ async function getFeatureConfigFromDb(guildId: string, feature: string) {
   if (!db) return null;
   try {
     const col = db.collection('keyv');
-    const doc =
-      (await col.findOne({ key: `keyv:feature:${guildId}:${feature}` })) ||
-      (await col.findOne({ key: `feature:${guildId}:${feature}` })) ||
-      (await col.findOne({ _id: `keyv:feature:${guildId}:${feature}` as any }));
+    const key1 = `keyv:feature:${guildId}:${feature}`;
+    const key2 = `feature:${guildId}:${feature}`;
+
+    const doc = await col.findOne({
+      $or: [
+        { _id: key1 as any },
+        { key: key1 },
+        { _id: key2 as any },
+        { key: key2 },
+      ],
+    });
+
     if (!doc) return null;
     let val = doc.value;
     if (typeof val === 'string') {
@@ -54,21 +62,31 @@ async function saveFeatureConfigToDb(guildId: string, feature: string, data: any
   if (!db) return false;
   try {
     const col = db.collection('keyv');
-    const key = `keyv:feature:${guildId}:${feature}`;
-    const altKey = `feature:${guildId}:${feature}`;
+    const key1 = `keyv:feature:${guildId}:${feature}`;
+    const key2 = `feature:${guildId}:${feature}`;
     const serialized = JSON.stringify({ value: data, expires: null });
 
-    // Explicitly await primary keyv write
+    // 1. Primary Keyv Format (_id and key)
     await col.updateOne(
-      { key },
-      { $set: { key, value: serialized, updatedAt: new Date() } },
+      { _id: key1 as any },
+      { $set: { _id: key1 as any, key: key1, value: serialized, updatedAt: new Date() } },
+      { upsert: true }
+    );
+    await col.updateOne(
+      { key: key1 },
+      { $set: { _id: key1 as any, key: key1, value: serialized, updatedAt: new Date() } },
       { upsert: true }
     );
 
-    // Explicitly await secondary plain key write
+    // 2. Secondary Plain Key Format (_id and key)
     await col.updateOne(
-      { key: altKey },
-      { $set: { key: altKey, value: data, updatedAt: new Date() } },
+      { _id: key2 as any },
+      { $set: { _id: key2 as any, key: key2, value: data, updatedAt: new Date() } },
+      { upsert: true }
+    );
+    await col.updateOne(
+      { key: key2 },
+      { $set: { _id: key2 as any, key: key2, value: data, updatedAt: new Date() } },
       { upsert: true }
     );
 

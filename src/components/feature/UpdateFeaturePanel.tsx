@@ -51,8 +51,8 @@ export function UpdateFeaturePanel({
         position: 'bottom-right',
       });
 
-      // Synchronize query cache so feature config refreshes
-      guildInfoQuery.refetch();
+      // Instantly synchronize query cache
+      await guildInfoQuery.refetch();
 
       return res;
     } catch (err: any) {
