@@ -46,7 +46,7 @@ export const useWelcomeFeature: UseFormRender<WelcomeFeature> = (
   useEffect(() => {
     if (initial) {
       reset({
-        channelId: initial.channelId ?? initial.welcomeChannelId ?? '',
+        channelId: initial.channelId || initial.welcomeChannelId || '1240012015091712061',
         welcomeTitle: initial.welcomeTitle ?? '🎉 Welcome to {server}!',
         welcomeDescription:
           initial.welcomeDescription ??
@@ -57,16 +57,16 @@ export const useWelcomeFeature: UseFormRender<WelcomeFeature> = (
           initial.footerIconUrl ??
           'https://i.postimg.cc/XJ2QrWQW/37896d8b04703ee4b064e61b1af02fed.webp',
         footerText: initial.footerText ?? 'Enjoy your stay in {server}',
-        autoRoleId: initial.autoRoleId ?? '',
+        autoRoleId: initial.autoRoleId || '939445945320505394',
         botAutoRoleId: initial.botAutoRoleId ?? '',
         enableImage: initial.enableImage ?? true,
         enableDm: initial.enableDm ?? false,
         dmMessage: initial.dmMessage ?? 'Welcome {user} to {server}! Thanks for joining our community.',
-        rulesChannelId: initial.rulesChannelId ?? '',
-        ticketChannelId: initial.ticketChannelId ?? '',
-        feedbackChannelId: initial.feedbackChannelId ?? '',
-        paymentChannelId: initial.paymentChannelId ?? '',
-        roleGamesChannelId: initial.roleGamesChannelId ?? '',
+        rulesChannelId: initial.rulesChannelId || '1240011681283969064',
+        ticketChannelId: initial.ticketChannelId || '1520717489548558416',
+        feedbackChannelId: initial.feedbackChannelId || '1447420576162648064',
+        paymentChannelId: initial.paymentChannelId || '1526685412234362890',
+        roleGamesChannelId: initial.roleGamesChannelId || '1523666892860948520',
         showQuickLinks: initial.showQuickLinks ?? true,
         showServerInfo: initial.showServerInfo ?? true,
       });

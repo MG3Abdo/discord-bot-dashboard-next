@@ -30,15 +30,15 @@ export const useServerLogsFeature: UseFormRender<ServerLogsFeature> = (
   useEffect(() => {
     if (initial) {
       reset({
-        memberJoinChannel: initial.memberJoinChannel ?? '',
-        memberLeftChannel: initial.memberLeftChannel ?? '',
-        messageDeleteChannel: initial.messageDeleteChannel ?? '',
-        messageEditChannel: initial.messageEditChannel ?? '',
-        roleEventsChannel: initial.roleEventsChannel ?? '',
-        channelEventsChannel: initial.channelEventsChannel ?? '',
-        voiceStateChannel: initial.voiceStateChannel ?? '',
-        memberModChannel: initial.memberModChannel ?? '',
-        autoJoinRoleId: initial.autoJoinRoleId ?? '',
+        memberJoinChannel: initial.memberJoinChannel || '1240011818223796284',
+        memberLeftChannel: initial.memberLeftChannel || '1240011818223796284',
+        messageDeleteChannel: initial.messageDeleteChannel || '1240011786523115591',
+        messageEditChannel: initial.messageEditChannel || '1240011786523115591',
+        roleEventsChannel: initial.roleEventsChannel || '1240011874259832863',
+        channelEventsChannel: initial.channelEventsChannel || '1240011874259832863',
+        voiceStateChannel: initial.voiceStateChannel || '1240012091293831178',
+        memberModChannel: initial.memberModChannel || '1240011818223796284',
+        autoJoinRoleId: initial.autoJoinRoleId || '939445945320505394',
       });
     }
   }, [initial, reset]);

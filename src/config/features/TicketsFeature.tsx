@@ -72,19 +72,17 @@ export const useTicketsFeature: UseFormRender<TicketsFeature> = (
   useEffect(() => {
     if (initial) {
       reset({
-        panelChannelId: initial.panelChannelId ?? '',
-        categoryId: initial.categoryId ?? '',
-        logChannelId: initial.logChannelId ?? '',
-        supportRoleId: initial.supportRoleId ?? '',
-        ceoRoleId: initial.ceoRoleId ?? '',
+        panelChannelId: initial.panelChannelId || '1520717489548558416',
+        categoryId: initial.categoryId || '1520716447817531402',
+        logChannelId: initial.logChannelId || '1521039167100944505',
+        supportRoleId: initial.supportRoleId || '1489650030959792159',
+        ceoRoleId: initial.ceoRoleId || '1295921618400313434',
         enableTranscripts: initial.enableTranscripts ?? true,
         enableDmFeedback: initial.enableDmFeedback ?? true,
-        embedTitle: initial.embedTitle ?? '🎫 MG3 STORE • SUPPORT TICKETS',
-        embedDescription:
-          initial.embedDescription ??
-          'Welcome to **MG3 Support Services**.\nPlease choose the appropriate service department from the select menu below to create your private ticket.',
-        embedColor: initial.embedColor ?? '#7c3aed',
-        embedBannerUrl: initial.embedBannerUrl ?? 'https://i.imghos.co/MtalsvvN.png',
+        embedTitle: initial.embedTitle || 'Click below to create a new ticket',
+        embedDescription: initial.embedDescription ?? '',
+        embedColor: initial.embedColor || '#7c3aed',
+        embedBannerUrl: initial.embedBannerUrl || 'https://i.imghos.co/BFqJGjlN.jpg',
         departments: initial.departments?.length ? initial.departments : DEFAULT_DEPARTMENTS,
       });
     }
