@@ -30,13 +30,16 @@ async function getFeatureConfigFromDb(guildId: string, feature: string) {
   if (!db) return null;
   try {
     const col = db.collection('keyv');
-    const doc = (await col.findOne({ key: `keyv:feature:${guildId}:${feature}` })) || (await col.findOne({ key: `feature:${guildId}:${feature}` }));
+    const doc =
+      (await col.findOne({ key: `keyv:feature:${guildId}:${feature}` })) ||
+      (await col.findOne({ key: `feature:${guildId}:${feature}` })) ||
+      (await col.findOne({ _id: `keyv:feature:${guildId}:${feature}` as any }));
     if (!doc) return null;
     let val = doc.value;
     if (typeof val === 'string') {
       try { val = JSON.parse(val); } catch {}
     }
-    if (val && typeof val === 'object' && (val as any).value) {
+    if (val && typeof val === 'object' && (val as any).value !== undefined) {
       return (val as any).value;
     }
     return val;
@@ -52,17 +55,23 @@ async function saveFeatureConfigToDb(guildId: string, feature: string, data: any
   try {
     const col = db.collection('keyv');
     const key = `keyv:feature:${guildId}:${feature}`;
+    const altKey = `feature:${guildId}:${feature}`;
     const serialized = JSON.stringify({ value: data, expires: null });
+
+    // Explicitly await primary keyv write
     await col.updateOne(
       { key },
       { $set: { key, value: serialized, updatedAt: new Date() } },
       { upsert: true }
     );
+
+    // Explicitly await secondary plain key write
     await col.updateOne(
-      { key: `feature:${guildId}:${feature}` },
-      { $set: { key: `feature:${guildId}:${feature}`, value: data, updatedAt: new Date() } },
+      { key: altKey },
+      { $set: { key: altKey, value: data, updatedAt: new Date() } },
       { upsert: true }
     );
+
     return true;
   } catch (e) {
     console.warn('Error writing to MongoDB in dashboard:', e);
