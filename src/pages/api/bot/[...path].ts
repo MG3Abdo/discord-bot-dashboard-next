@@ -385,8 +385,8 @@ function sanitizeFeatureConfig(saved: any, fallback: any, targetFeature: string)
     if (!result.panelChannelId || result.panelChannelId === '') {
       result.panelChannelId = '1520717489548558416';
     }
-    if (!result.supportRoleId || result.supportRoleId === '') {
-      result.supportRoleId = '1489650030959792159';
+    if (!result.supportRoleId || result.supportRoleId === '' || result.supportRoleId === '1523666892860948520') {
+      result.supportRoleId = '1295921618400313434';
     }
     if (!result.ceoRoleId || result.ceoRoleId === '') {
       result.ceoRoleId = '1295921618400313434';
