@@ -231,6 +231,59 @@ const DEFAULT_FEATURE_TEMPLATE: Record<string, any> = {
 const guildFeatureStore: Record<string, Record<string, any>> = {};
 const guildEnabledStore: Record<string, Set<string>> = {};
 
+function getMainStoreFallback(gId: string, feat: string) {
+  if (gId === '928462399852412979') {
+    if (feat === 'tickets') {
+      return {
+        panelChannelId: '1520717489548558416',
+        categoryId: '1520716447817531402',
+        logChannelId: '1521039167100944505',
+        supportRoleId: '1489650030959792159',
+        ceoRoleId: '1295921618400313434',
+        enableTranscripts: true,
+        enableDmFeedback: true,
+        embedTitle: 'Click below to create a new ticket',
+        embedDescription: '',
+        embedColor: '#7c3aed',
+        embedBannerUrl: 'https://i.imghos.co/BFqJGjlN.jpg',
+        logoUrl: 'https://i.imghos.co/ZFoEJatj.gif',
+        thumbnailUrl: 'https://i.imghos.co/ZFoEJatj.gif',
+        footerText: 'Enjoy your stay in MG3 STORE',
+        departments: DEFAULT_FEATURE_TEMPLATE.tickets.departments,
+      };
+    }
+    if (feat === 'welcome') {
+      return {
+        channelId: '1240012015091712061',
+        rulesChannelId: '1240011681283969064',
+        feedbackChannelId: '1447420576162648064',
+        ticketChannelId: '1520717489548558416',
+        paymentChannelId: '1526685412234362890',
+        roleGamesChannelId: '1523666892860948520',
+        autoRoleId: '939445945320505394',
+        show_quick_links: true,
+        show_server_info: true,
+        welcomeTitle: '🎉 Welcome to MG3 STORE!',
+        welcomeDescription: 'Welcome to MG3 STORE!',
+      };
+    }
+    if (feat === 'server-logs') {
+      return {
+        memberJoinChannel: '1240011818223796284',
+        memberLeftChannel: '1240011818223796284',
+        messageDeleteChannel: '1240011786523115591',
+        messageEditChannel: '1240011786523115591',
+        roleEventsChannel: '1240011874259832863',
+        channelEventsChannel: '1240011874259832863',
+        voiceStateChannel: '1240012091293831178',
+        memberModChannel: '1240011818223796284',
+        autoJoinRoleId: '939445945320505394',
+      };
+    }
+  }
+  return DEFAULT_FEATURE_TEMPLATE[feat] || {};
+}
+
 function initGuildStoreIfMissing(guildId: string) {
   if (!guildFeatureStore[guildId]) {
     guildFeatureStore[guildId] = JSON.parse(JSON.stringify(DEFAULT_FEATURE_TEMPLATE));
@@ -725,58 +778,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    function getMainStoreFallback(gId: string, feat: string) {
-      if (gId === '928462399852412979') {
-        if (feat === 'tickets') {
-          return {
-            panelChannelId: '1520717489548558416',
-            categoryId: '1520716447817531402',
-            logChannelId: '1521039167100944505',
-            supportRoleId: '1489650030959792159',
-            ceoRoleId: '1295921618400313434',
-            enableTranscripts: true,
-            enableDmFeedback: true,
-            embedTitle: 'Click below to create a new ticket',
-            embedDescription: '',
-            embedColor: '#7c3aed',
-            embedBannerUrl: 'https://i.imghos.co/BFqJGjlN.jpg',
-            logoUrl: 'https://i.imghos.co/ZFoEJatj.gif',
-            thumbnailUrl: 'https://i.imghos.co/ZFoEJatj.gif',
-            footerText: 'Enjoy your stay in MG3 STORE',
-            departments: DEFAULT_FEATURE_TEMPLATE.tickets.departments,
-          };
-        }
-        if (feat === 'welcome') {
-          return {
-            channelId: '1240012015091712061',
-            rulesChannelId: '1240011681283969064',
-            feedbackChannelId: '1447420576162648064',
-            ticketChannelId: '1520717489548558416',
-            paymentChannelId: '1526685412234362890',
-            roleGamesChannelId: '1523666892860948520',
-            autoRoleId: '939445945320505394',
-            show_quick_links: true,
-            show_server_info: true,
-            welcomeTitle: '🎉 Welcome to MG3 STORE!',
-            welcomeDescription: 'Welcome to MG3 STORE!',
-          };
-        }
-        if (feat === 'server-logs') {
-          return {
-            memberJoinChannel: '1240011818223796284',
-            memberLeftChannel: '1240011818223796284',
-            messageDeleteChannel: '1240011786523115591',
-            messageEditChannel: '1240011786523115591',
-            roleEventsChannel: '1240011874259832863',
-            channelEventsChannel: '1240011874259832863',
-            voiceStateChannel: '1240012091293831178',
-            memberModChannel: '1240011818223796284',
-            autoJoinRoleId: '939445945320505394',
-          };
-        }
-      }
-      return DEFAULT_FEATURE_TEMPLATE[feat] || {};
-    }
 
     // -----------------------------------------------------------------------
     // Specific Feature Request: /guild/:id/features/:feature

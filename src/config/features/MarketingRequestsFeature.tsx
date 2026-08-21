@@ -7,6 +7,8 @@ import { MarketingRequestsFeature } from '@/config/types/custom-types';
 import { ConfigExportCard } from '@/components/feature/ConfigExportCard';
 import { useRouter } from 'next/router';
 
+import { useEffect } from 'react';
+
 export const useMarketingRequestsFeature: UseFormRender<MarketingRequestsFeature> = (
   initial,
   onSubmit
@@ -14,12 +16,29 @@ export const useMarketingRequestsFeature: UseFormRender<MarketingRequestsFeature
   const guild = useRouter().query.guild as string;
   const { control, handleSubmit, reset, formState, watch } = useForm<MarketingRequestsFeature>({
     defaultValues: {
+      requestChannelId: initial?.requestChannelId ?? '',
+      logChannelId: initial?.logChannelId ?? '',
       marketingRoleId: initial?.marketingRoleId ?? '',
-      marketingLeaderRoleId: initial?.marketingLeaderRoleId ?? '',
+      leaderRoleId: initial?.leaderRoleId ?? initial?.marketingLeaderRoleId ?? '',
+      marketingLeaderRoleId: initial?.marketingLeaderRoleId ?? initial?.leaderRoleId ?? '',
       logDoneChannelId: initial?.logDoneChannelId ?? '',
       logDeleteChannelId: initial?.logDeleteChannelId ?? '',
     },
   });
+
+  useEffect(() => {
+    if (initial) {
+      reset({
+        requestChannelId: initial.requestChannelId ?? '',
+        logChannelId: initial.logChannelId ?? '',
+        marketingRoleId: initial.marketingRoleId ?? '',
+        leaderRoleId: initial.leaderRoleId ?? initial.marketingLeaderRoleId ?? '',
+        marketingLeaderRoleId: initial.marketingLeaderRoleId ?? initial.leaderRoleId ?? '',
+        logDoneChannelId: initial.logDoneChannelId ?? '',
+        logDeleteChannelId: initial.logDeleteChannelId ?? '',
+      });
+    }
+  }, [initial, reset]);
 
   const values = watch();
 
@@ -38,6 +57,20 @@ module.exports = {
     component: (
       <VStack spacing={4} align="stretch">
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+          <ChannelSelectForm
+            control={{
+              label: 'Marketing Request Channel',
+              description: 'Channel where members submit partner and marketing ads.',
+            }}
+            controller={{ control, name: 'requestChannelId' }}
+          />
+          <ChannelSelectForm
+            control={{
+              label: 'Marketing Logs Channel',
+              description: 'Channel where accepted ads and delivery receipts are recorded.',
+            }}
+            controller={{ control, name: 'logChannelId' }}
+          />
           <RoleSelectForm
             control={{
               label: 'Marketing Role',
