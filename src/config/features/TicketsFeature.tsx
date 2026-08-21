@@ -54,13 +54,19 @@ export const useTicketsFeature: UseFormRender<TicketsFeature> = (
   const sanitizeDepartments = (depts?: TicketDepartment[]) =>
     depts && Array.isArray(depts) && depts.length >= 11 ? depts : DEFAULT_DEPARTMENTS;
 
+  const sanitizeCategory = (cat?: string) => (cat && cat !== '' ? cat : '1520716447817531402');
+  const sanitizeLogChannel = (log?: string) =>
+    log && log !== '' && log !== '1240011818223796284' ? log : '1521039167100944505';
+  const sanitizeCeoRole = (role?: string) => (role && role !== '' ? role : '1295921618400313434');
+  const sanitizeSupportRole = (role?: string) => (role && role !== '' ? role : '1489650030959792159');
+
   const { control, handleSubmit, reset, formState, watch } = useForm<TicketsFeature>({
     defaultValues: {
       panelChannelId: initial?.panelChannelId || '1520717489548558416',
-      categoryId: initial?.categoryId || '1520716447817531402',
-      logChannelId: initial?.logChannelId || '1521039167100944505',
-      supportRoleId: initial?.supportRoleId || '1489650030959792159',
-      ceoRoleId: initial?.ceoRoleId || '1295921618400313434',
+      categoryId: sanitizeCategory(initial?.categoryId),
+      logChannelId: sanitizeLogChannel(initial?.logChannelId),
+      supportRoleId: sanitizeSupportRole(initial?.supportRoleId),
+      ceoRoleId: sanitizeCeoRole(initial?.ceoRoleId),
       enableTranscripts: initial?.enableTranscripts ?? true,
       enableDmFeedback: initial?.enableDmFeedback ?? true,
       embedTitle: sanitizeTitle(initial?.embedTitle),
@@ -80,10 +86,10 @@ export const useTicketsFeature: UseFormRender<TicketsFeature> = (
     if (initial) {
       reset({
         panelChannelId: initial.panelChannelId || '1520717489548558416',
-        categoryId: initial.categoryId || '1520716447817531402',
-        logChannelId: initial.logChannelId || '1521039167100944505',
-        supportRoleId: initial.supportRoleId || '1489650030959792159',
-        ceoRoleId: initial.ceoRoleId || '1295921618400313434',
+        categoryId: sanitizeCategory(initial.categoryId),
+        logChannelId: sanitizeLogChannel(initial.logChannelId),
+        supportRoleId: sanitizeSupportRole(initial.supportRoleId),
+        ceoRoleId: sanitizeCeoRole(initial.ceoRoleId),
         enableTranscripts: initial.enableTranscripts ?? true,
         enableDmFeedback: initial.enableDmFeedback ?? true,
         embedTitle: sanitizeTitle(initial.embedTitle),
