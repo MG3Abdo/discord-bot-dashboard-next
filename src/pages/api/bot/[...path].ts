@@ -44,12 +44,13 @@ const DEFAULT_FEATURE_TEMPLATE: Record<string, any> = {
     supportRoleId: '',
     ceoRoleId: '',
     enableTranscripts: true,
-    enableDmFeedback: true,
-    embedTitle: '🎫 SUPPORT TICKETS',
-    embedDescription:
-      'Welcome to Support Services.\nPlease select the department from the menu below to open your private ticket.',
+    embedTitle: 'Click below to create a new ticket',
+    embedDescription: '',
     embedColor: '#7c3aed',
-    embedBannerUrl: 'https://i.imghos.co/MtalsvvN.png',
+    embedBannerUrl: 'https://i.imghos.co/BFqJGjlN.jpg',
+    logoUrl: 'https://i.imghos.co/ZFoEJatj.gif',
+    thumbnailUrl: 'https://i.imghos.co/ZFoEJatj.gif',
+    footerText: 'Enjoy your stay in MG3 STORE',
     departments: [
       { id: 'dept-1', label: 'ROCKSTAR_ACCOUNT', value: 'ROCKSTAR_ACCOUNT', emoji: '<:MG3_FIVEam:1526256494230896800>', description: 'Rockstar Games & GTA Support' },
       { id: 'dept-2', label: 'SUPPORT AND INQUIRIES', value: 'SUPPORT_AND_INQUIRIES', emoji: '<:SUPPORT_AND_INQUIRIES:1526254958176112892>', description: 'General Support & Inquiries' },
@@ -348,16 +349,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           };
         });
 
+        const storeName = config.storeName || authCheck.guild?.name || 'MG3 STORE';
+        const logoUrl = config.logoUrl || 'https://i.imghos.co/ZFoEJatj.gif';
+        const bannerUrl = config.embedBannerUrl || 'https://i.imghos.co/BFqJGjlN.jpg';
+
         payload = {
           embeds: [
             {
-              title: config.embedTitle || '🎫 SUPPORT TICKETS',
-              description:
-                config.embedDescription ||
-                'Welcome to Support Services.\nPlease select the department from the menu below to open your private ticket.',
+              author: { name: storeName, icon_url: logoUrl },
+              title: config.embedTitle || 'Click below to create a new ticket',
+              description: config.embedDescription || undefined,
               color: parseInt((config.embedColor || '#7c3aed').replace('#', ''), 16) || 0x7c3aed,
-              image: config.embedBannerUrl ? { url: config.embedBannerUrl } : { url: 'https://i.imghos.co/MtalsvvN.png' },
-              footer: { text: `${authCheck.guild?.name || 'Support'} • 24/7 Assistance` },
+              thumbnail: { url: config.thumbnailUrl || logoUrl },
+              image: { url: bannerUrl },
+              footer: { text: config.footerText || `Enjoy your stay in ${storeName}`, icon_url: logoUrl },
               timestamp: new Date().toISOString(),
             },
           ],
@@ -368,7 +373,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 {
                   type: 3, // StringSelect
                   custom_id: 'ticket_select_service',
-                  placeholder: 'Select a department to open a ticket...',
+                  placeholder: 'Select a ticket option',
                   options: selectOptions,
                 },
               ],
