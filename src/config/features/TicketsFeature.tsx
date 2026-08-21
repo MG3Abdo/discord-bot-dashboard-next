@@ -58,7 +58,8 @@ export const useTicketsFeature: UseFormRender<TicketsFeature> = (
   const sanitizeLogChannel = (log?: string) =>
     log && log !== '' && log !== '1240011818223796284' ? log : '1521039167100944505';
   const sanitizeCeoRole = (role?: string) => (role && role !== '' ? role : '1295921618400313434');
-  const sanitizeSupportRole = (role?: string) => (role && role !== '' ? role : '1489650030959792159');
+  const sanitizeSupportRole = (role?: string) =>
+    role && role !== '' && role !== '1523666892860948520' ? role : '1295921618400313434';
 
   const getStoredTicketsConfig = () => {
     if (typeof window === 'undefined') return null;
