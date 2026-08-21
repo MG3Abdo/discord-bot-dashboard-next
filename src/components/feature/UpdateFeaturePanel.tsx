@@ -101,6 +101,17 @@ export function UpdateFeaturePanel({
   };
 
   const onPublish = async () => {
+    if (!guild || guild === 'undefined' || guild === 'null' || !/^\d{17,20}$/.test(guild)) {
+      toast({
+        title: 'Invalid Server',
+        description: 'No valid Discord server selected.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+        position: 'bottom-right',
+      });
+      return;
+    }
     setIsPublishing(true);
     try {
       if (result.canSave && typeof result.onSubmit === 'function') {
@@ -109,7 +120,7 @@ export function UpdateFeaturePanel({
         } catch {}
       }
 
-      const res = await fetch(`/api/bot/guild/${guild || '928462399852412979'}/features/${featureId}/publish`, {
+      const res = await fetch(`/api/bot/guild/${guild}/features/${featureId}/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });

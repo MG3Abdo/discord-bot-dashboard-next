@@ -30,40 +30,28 @@ async function getFeatureConfigFromDb(guildId: string, feature: string) {
   const db = await getMongoDb();
   if (!db) return null;
   try {
-    const key1 = `feature:${guildId}:${feature}`;
-    const key2 = `keyv:feature:${guildId}:${feature}`;
+    const key = `feature:${guildId}:${feature}`;
+    const colKv = db.collection('kvstores');
 
-    const collections = [
-      db.collection('kvstores'),
-      db.collection('keyv'),
-      db.collection('kvstore'),
-    ];
+    const doc = await colKv.findOne({
+      $or: [
+        { key },
+        { _id: key as any },
+      ],
+    });
 
-    for (const col of collections) {
-      try {
-        const doc = await col.findOne({
-          $or: [
-            { key: key1 },
-            { _id: key1 as any },
-            { key: key2 },
-            { _id: key2 as any },
-          ],
-        });
-
-        if (doc && doc.value != null) {
-          let val = doc.value;
-          if (typeof val === 'string') {
-            try { val = JSON.parse(val); } catch {}
-          }
-          if (val && typeof val === 'object' && (val as any).value !== undefined) {
-            val = (val as any).value;
-          }
-          if (val && typeof val === 'string') {
-            try { val = JSON.parse(val); } catch {}
-          }
-          if (val && typeof val === 'object') return val;
-        }
-      } catch {}
+    if (doc && doc.value != null) {
+      let val = doc.value;
+      if (typeof val === 'string') {
+        try { val = JSON.parse(val); } catch {}
+      }
+      if (val && typeof val === 'object' && (val as any).value !== undefined) {
+        val = (val as any).value;
+      }
+      if (val && typeof val === 'string') {
+        try { val = JSON.parse(val); } catch {}
+      }
+      if (val && typeof val === 'object') return val;
     }
     return null;
   } catch (e) {
@@ -76,30 +64,14 @@ async function saveFeatureConfigToDb(guildId: string, feature: string, data: any
   const db = await getMongoDb();
   if (!db) return false;
   try {
-    const key1 = `feature:${guildId}:${feature}`;
-    const key2 = `keyv:feature:${guildId}:${feature}`;
-    const serializedKeyv = JSON.stringify({ value: data, expires: null });
-
+    const key = `feature:${guildId}:${feature}`;
     const colKv = db.collection('kvstores');
-    const colKeyv = db.collection('keyv');
 
-    await Promise.allSettled([
-      colKv.updateOne(
-        { key: key1 },
-        { $set: { key: key1, value: data } },
-        { upsert: true }
-      ),
-      colKeyv.updateOne(
-        { key: key1 },
-        { $set: { key: key1, value: data } },
-        { upsert: true }
-      ),
-      colKeyv.updateOne(
-        { _id: key2 as any },
-        { $set: { key: key2, value: serializedKeyv } },
-        { upsert: true }
-      ),
-    ]);
+    await colKv.updateOne(
+      { key },
+      { $set: { key, value: data, updatedAt: new Date() } },
+      { upsert: true }
+    );
 
     return true;
   } catch (e) {
@@ -425,7 +397,7 @@ async function verifyUserGuildPermission(
   accessToken: string,
   guildId: string
 ): Promise<{ authorized: boolean; guild?: any; error?: string; status?: number }> {
-  return { authorized: true, guild: { id: guildId || '928462399852412979', name: 'MG3 STORE' } };
+  return { authorized: true, guild: { id: guildId, name: 'Server' } };
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -487,13 +459,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // =========================================================================
   if (subpath.startsWith('guild/') || subpath.startsWith('guilds/')) {
     const parts = subpath.split('/');
-    const rawGuildId = parts[1];
-    const guildId =
-      !rawGuildId || rawGuildId === 'undefined' || rawGuildId === 'null' || rawGuildId === ''
-        ? '928462399852412979'
-        : rawGuildId;
+    const guildId = parts[1];
     const subResource = parts[2]; // e.g. 'roles', 'channels', 'resources', 'features'
     const targetFeature = parts[3]; // e.g. 'payment', 'tickets'
+
+    if (!guildId || guildId === 'undefined' || guildId === 'null' || !/^\d{17,20}$/.test(guildId)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'INVALID_GUILD_ID',
+          message: 'Missing or invalid Discord Guild ID in request URL',
+          guildId: guildId || null,
+        },
+      });
+    }
 
     // Step A: Strict User Authorization Check for this Guild
     const authCheck = await verifyUserGuildPermission(session.data.access_token, guildId);
