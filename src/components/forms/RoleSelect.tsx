@@ -54,9 +54,26 @@ export const RoleSelect = forwardRef<SelectInstance<Option, false>, Props>((prop
   );
 
   const selected = useMemo(() => {
-    if (!value || !rolesQuery.data) return null;
-    const found = rolesQuery.data.find((role) => String(role.id) === String(value));
-    return found != null ? renderRoleOption(found) : null;
+    if (!value) return null;
+    if (rolesQuery.data && Array.isArray(rolesQuery.data)) {
+      const found = rolesQuery.data.find((role) => String(role.id) === String(value));
+      if (found != null) return renderRoleOption(found);
+    }
+    if (String(value) === '1295921618400313434') {
+      return {
+        value: '1295921618400313434',
+        label: '@MG 〢 CEO',
+        icon: <Icon as={BsPeopleFill} color="#7c3aed" w="18px" h="18px" />,
+      };
+    }
+    if (String(value) === '1489650030959792159') {
+      return {
+        value: '1489650030959792159',
+        label: '@Support',
+        icon: <Icon as={BsPeopleFill} color="#22c55e" w="18px" h="18px" />,
+      };
+    }
+    return null;
   }, [value, rolesQuery.data]);
 
   const noOptionsMessage = () => {

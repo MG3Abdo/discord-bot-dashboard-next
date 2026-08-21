@@ -139,16 +139,16 @@ export const useTicketsFeature: UseFormRender<TicketsFeature> = (
         localStorage.setItem('mg3_tickets_config', JSON.stringify(data));
       } catch {}
     }
-    const res = await onSubmit(data);
+    const res = await onSubmit(data as any);
     reset(sanitizeValues(data));
     return res;
   };
 
   return {
-    onSubmit: handleSubmit(handleSave),
+    onSubmit: handleSubmit(handleSave as any) as any,
     canSave: formState.isDirty,
     reset: () => reset(sanitizeValues(initial)),
-    render: (
+    component: (
       <Flex direction="column" gap={6} w="full">
         <Flex direction={{ base: 'column', md: 'row' }} gap={6}>
           <Box flex={1}>

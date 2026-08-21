@@ -1,6 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { API_ENDPOINT, getServerSession } from '@/utils/auth/server';
-import { MongoClient } from 'mongodb';
 
 const MONGODB_URI =
   process.env.MONGODB_URI ||
@@ -9,12 +8,14 @@ const MONGODB_URI =
   process.env.DATABASE_URL ||
   '';
 
-let cachedClient: MongoClient | null = null;
+let cachedClient: any = null;
 
 async function getMongoDb() {
   if (!MONGODB_URI) return null;
   try {
     if (!cachedClient) {
+      const dynamicRequire = eval('require');
+      const { MongoClient } = dynamicRequire('mongodb');
       cachedClient = new MongoClient(MONGODB_URI, { maxPoolSize: 10 });
       await cachedClient.connect();
     }
@@ -902,6 +903,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         let saved = sanitizeFeatureConfig(rawSaved, fallback, targetFeature);
 
         if (saved && targetFeature === 'tickets') {
+          if (!saved.panelChannelId || saved.panelChannelId === '') {
+            saved.panelChannelId = '1520717489548558416';
+          }
+          if (!saved.categoryId || saved.categoryId === '' || saved.categoryId === 'undefined') {
+            saved.categoryId = '1520716447817531402';
+          }
+          if (!saved.logChannelId || saved.logChannelId === '' || saved.logChannelId === '1240011818223796284') {
+            saved.logChannelId = '1521039167100944505';
+          }
+          if (!saved.supportRoleId || saved.supportRoleId === '' || saved.supportRoleId === '1523666892860948520') {
+            saved.supportRoleId = '1295921618400313434';
+          }
+          if (!saved.ceoRoleId || saved.ceoRoleId === '') {
+            saved.ceoRoleId = '1295921618400313434';
+          }
           if (!saved.embedBannerUrl || saved.embedBannerUrl === 'https://i.imghos.co/MtalsvvN.png') {
             saved.embedBannerUrl = 'https://i.imghos.co/BFqJGjlN.jpg';
           }

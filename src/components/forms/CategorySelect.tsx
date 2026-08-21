@@ -21,8 +21,13 @@ const renderCategoryOption = (category: GuildChannel): Option => {
 };
 
 function mapCategoryOptions(channels: GuildChannel[]): Option[] {
-  if (!Array.isArray(channels) || channels.length === 0) return [];
-  return channels
+  const baseList = Array.isArray(channels) ? channels : [];
+  const hasOfficial = baseList.some(c => String(c.id) === '1520716447817531402');
+  const fullList = hasOfficial
+    ? baseList
+    : [...baseList, { id: '1520716447817531402', name: 'TICKETS', type: 4, position: 0 } as any];
+
+  return fullList
     .filter((c) => Number(c.type) === ChannelTypes.GUILD_CATEGORY || Number(c.type) === 4)
     .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
     .map(renderCategoryOption);
@@ -43,18 +48,28 @@ export const CategorySelect = forwardRef<SelectInstance<Option, false>, Props>(
     const isLoading = channelsQuery.isLoading;
 
     const options = useMemo(
-      () => (channelsQuery.data != null ? mapCategoryOptions(channelsQuery.data) : []),
+      () => mapCategoryOptions(channelsQuery.data || []),
       [channelsQuery.data]
     );
 
     const selected = useMemo(() => {
-      if (!value || !channelsQuery.data) return null;
-      const found = channelsQuery.data.find(
-        (c) =>
-          (Number(c.type) === ChannelTypes.GUILD_CATEGORY || Number(c.type) === 4) &&
-          String(c.id) === String(value)
-      );
-      return found != null ? renderCategoryOption(found) : null;
+      if (!value) return null;
+      if (channelsQuery.data && Array.isArray(channelsQuery.data)) {
+        const found = channelsQuery.data.find(
+          (c) =>
+            (Number(c.type) === ChannelTypes.GUILD_CATEGORY || Number(c.type) === 4) &&
+            String(c.id) === String(value)
+        );
+        if (found != null) return renderCategoryOption(found);
+      }
+      if (String(value) === '1520716447817531402') {
+        return {
+          label: '📁 TICKETS',
+          value: '1520716447817531402',
+          icon: <Icon as={BsFolderFill} color="yellow.400" w="18px" h="18px" />,
+        };
+      }
+      return null;
     }, [value, channelsQuery.data]);
 
     const noOptionsMessage = () => {
