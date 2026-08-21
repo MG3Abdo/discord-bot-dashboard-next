@@ -27,38 +27,17 @@ import { useEffect } from 'react';
 import { FaPlus, FaTrash, FaTicketAlt } from 'react-icons/fa';
 
 const DEFAULT_DEPARTMENTS: TicketDepartment[] = [
-  {
-    id: 'dept-1',
-    label: 'Game Support',
-    value: 'ARC',
-    emoji: '🎮',
-    description: 'Game accounts, boosts, and keys',
-    welcomeMessage: 'Welcome! A game support specialist will be with you shortly.',
-  },
-  {
-    id: 'dept-2',
-    label: 'Orders & Payments',
-    value: 'BUY_SELL',
-    emoji: '🛒',
-    description: 'Store purchases, invoices & receipts',
-    welcomeMessage: 'Welcome to Store Orders! Please state your order details.',
-  },
-  {
-    id: 'dept-3',
-    label: 'Partnership & Marketing',
-    value: 'MARKETING',
-    emoji: '🤝',
-    description: 'Partnership, creator deals & ads',
-    welcomeMessage: 'Welcome to Marketing! Please submit your proposal or server link.',
-  },
-  {
-    id: 'dept-4',
-    label: 'CEO & Administration',
-    value: 'SUPPORT_AND_INQUIRIES',
-    emoji: '👑',
-    description: 'Direct escalation with management',
-    welcomeMessage: 'Direct management ticket. The CEO / Admin will review your request.',
-  },
+  { id: 'dept-1', label: 'ROCKSTAR_ACCOUNT', value: 'ROCKSTAR_ACCOUNT', emoji: '<:MG3_FIVEam:1526256494230896800>', description: 'Rockstar Games & GTA Support' },
+  { id: 'dept-2', label: 'SUPPORT AND INQUIRIES', value: 'SUPPORT_AND_INQUIRIES', emoji: '<:SUPPORT_AND_INQUIRIES:1526254958176112892>', description: 'General Support & Inquiries' },
+  { id: 'dept-3', label: 'FC', value: 'FC', emoji: '<:MG3_FC:1526259039888212100>', description: 'EA FC & FIFA Services' },
+  { id: 'dept-4', label: 'Seller Appel', value: 'SELLER_APPEL', emoji: '<:MG3_USER_NAME:1523653583319470181>', description: 'Seller Appeal & Partner Requests' },
+  { id: 'dept-5', label: 'Buy & Sell', value: 'BUY_SELL', emoji: '<:MG3_PARTNER:1523652769788203039>', description: 'Buying and Selling Requests' },
+  { id: 'dept-6', label: 'COD', value: 'COD', emoji: '<:MG3_COD:1523657809810686133>', description: 'Call of Duty Services' },
+  { id: 'dept-7', label: 'Overwatch2', value: 'OVERWATCH2', emoji: '<:MG3_overwatch:1523658050181927022>', description: 'Overwatch 2 Services' },
+  { id: 'dept-8', label: 'Marvel Rivals', value: 'RIVALS', emoji: '<:MG3_MARVL_RIVELS:1523658151411449896>', description: 'Marvel Rivals Services' },
+  { id: 'dept-9', label: 'VALORANT', value: 'VALORANT', emoji: '<:MG3_VALORANT:1523658461735420006>', description: 'Valorant Points & Accounts' },
+  { id: 'dept-10', label: 'Rocket League', value: 'ROCKET', emoji: '<:MG3_Rocket_League:1523658298421809213>', description: 'Rocket League Items & Credits' },
+  { id: 'dept-11', label: 'ARC Raiders', value: 'ARC', emoji: '<:MG3_ARC_Raiders:1523666892860948520>', description: 'ARC Raiders Support' },
 ];
 
 export const useTicketsFeature: UseFormRender<TicketsFeature> = (

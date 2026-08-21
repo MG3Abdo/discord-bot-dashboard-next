@@ -1,5 +1,74 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { API_ENDPOINT, getServerSession } from '@/utils/auth/server';
+import { MongoClient } from 'mongodb';
+
+const MONGODB_URI =
+  process.env.MONGODB_URI ||
+  process.env.MONGO_URL ||
+  process.env.MONGODB_URL ||
+  process.env.DATABASE_URL ||
+  '';
+
+let cachedClient: MongoClient | null = null;
+
+async function getMongoDb() {
+  if (!MONGODB_URI) return null;
+  try {
+    if (!cachedClient) {
+      cachedClient = new MongoClient(MONGODB_URI, { maxPoolSize: 10 });
+      await cachedClient.connect();
+    }
+    return cachedClient.db();
+  } catch (e) {
+    console.warn('MongoDB connection failed in dashboard:', e);
+    return null;
+  }
+}
+
+async function getFeatureConfigFromDb(guildId: string, feature: string) {
+  const db = await getMongoDb();
+  if (!db) return null;
+  try {
+    const col = db.collection('keyv');
+    const doc = (await col.findOne({ key: `keyv:feature:${guildId}:${feature}` })) || (await col.findOne({ key: `feature:${guildId}:${feature}` }));
+    if (!doc) return null;
+    let val = doc.value;
+    if (typeof val === 'string') {
+      try { val = JSON.parse(val); } catch {}
+    }
+    if (val && typeof val === 'object' && (val as any).value) {
+      return (val as any).value;
+    }
+    return val;
+  } catch (e) {
+    console.warn('Error reading from MongoDB in dashboard:', e);
+    return null;
+  }
+}
+
+async function saveFeatureConfigToDb(guildId: string, feature: string, data: any) {
+  const db = await getMongoDb();
+  if (!db) return false;
+  try {
+    const col = db.collection('keyv');
+    const key = `keyv:feature:${guildId}:${feature}`;
+    const serialized = JSON.stringify({ value: data, expires: null });
+    await col.updateOne(
+      { key },
+      { $set: { key, value: serialized, updatedAt: new Date() } },
+      { upsert: true }
+    );
+    await col.updateOne(
+      { key: `feature:${guildId}:${feature}` },
+      { $set: { key: `feature:${guildId}:${feature}`, value: data, updatedAt: new Date() } },
+      { upsert: true }
+    );
+    return true;
+  } catch (e) {
+    console.warn('Error writing to MongoDB in dashboard:', e);
+    return false;
+  }
+}
 
 const BOT_API_URL =
   process.env.API_URL ||
@@ -650,23 +719,82 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    function getMainStoreFallback(gId: string, feat: string) {
+      if (gId === '928462399852412979') {
+        if (feat === 'tickets') {
+          return {
+            panelChannelId: '1520717489548558416',
+            categoryId: '1520716447817531402',
+            logChannelId: '1521039167100944505',
+            supportRoleId: '1489650030959792159',
+            ceoRoleId: '1295921618400313434',
+            enableTranscripts: true,
+            enableDmFeedback: true,
+            embedTitle: 'Click below to create a new ticket',
+            embedDescription: '',
+            embedColor: '#7c3aed',
+            embedBannerUrl: 'https://i.imghos.co/BFqJGjlN.jpg',
+            logoUrl: 'https://i.imghos.co/ZFoEJatj.gif',
+            thumbnailUrl: 'https://i.imghos.co/ZFoEJatj.gif',
+            footerText: 'Enjoy your stay in MG3 STORE',
+            departments: DEFAULT_FEATURE_TEMPLATE.tickets.departments,
+          };
+        }
+        if (feat === 'welcome') {
+          return {
+            channelId: '1240012015091712061',
+            rulesChannelId: '1240011681283969064',
+            feedbackChannelId: '1447420576162648064',
+            ticketChannelId: '1520717489548558416',
+            paymentChannelId: '1526685412234362890',
+            roleGamesChannelId: '1523666892860948520',
+            autoRoleId: '939445945320505394',
+            show_quick_links: true,
+            show_server_info: true,
+            welcomeTitle: '🎉 Welcome to MG3 STORE!',
+            welcomeDescription: 'Welcome to MG3 STORE!',
+          };
+        }
+        if (feat === 'server-logs') {
+          return {
+            memberJoinChannel: '1240011818223796284',
+            memberLeftChannel: '1240011818223796284',
+            messageDeleteChannel: '1240011786523115591',
+            messageEditChannel: '1240011786523115591',
+            roleEventsChannel: '1240011874259832863',
+            channelEventsChannel: '1240011874259832863',
+            voiceStateChannel: '1240012091293831178',
+            memberModChannel: '1240011818223796284',
+            autoJoinRoleId: '939445945320505394',
+          };
+        }
+      }
+      return DEFAULT_FEATURE_TEMPLATE[feat] || {};
+    }
+
     // -----------------------------------------------------------------------
     // Specific Feature Request: /guild/:id/features/:feature
     // -----------------------------------------------------------------------
     if (subResource === 'features' && targetFeature) {
       if (req.method === 'GET') {
-        const saved = guildFeatureStore[guildId]?.[targetFeature] || DEFAULT_FEATURE_TEMPLATE[targetFeature] || {};
+        const fromDb = await getFeatureConfigFromDb(guildId, targetFeature);
+        const fallback = getMainStoreFallback(guildId, targetFeature);
+        const saved = fromDb ? { ...fallback, ...fromDb } : (guildFeatureStore[guildId]?.[targetFeature] || fallback);
         return res.status(200).json(saved);
       }
 
       if (req.method === 'POST' || req.method === 'PATCH') {
         const bodyData = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
-        guildFeatureStore[guildId][targetFeature] = {
+        const fallback = getMainStoreFallback(guildId, targetFeature);
+        const merged = {
+          ...fallback,
           ...(guildFeatureStore[guildId][targetFeature] || {}),
           ...bodyData,
         };
+        guildFeatureStore[guildId][targetFeature] = merged;
         guildEnabledStore[guildId].add(targetFeature);
-        return res.status(200).json(guildFeatureStore[guildId][targetFeature]);
+        await saveFeatureConfigToDb(guildId, targetFeature, merged);
+        return res.status(200).json(merged);
       }
 
       if (req.method === 'DELETE') {
