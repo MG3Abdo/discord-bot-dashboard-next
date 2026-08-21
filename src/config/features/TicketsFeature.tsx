@@ -60,20 +60,32 @@ export const useTicketsFeature: UseFormRender<TicketsFeature> = (
   const sanitizeCeoRole = (role?: string) => (role && role !== '' ? role : '1295921618400313434');
   const sanitizeSupportRole = (role?: string) => (role && role !== '' ? role : '1489650030959792159');
 
+  const getStoredTicketsConfig = () => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const stored = localStorage.getItem('mg3_tickets_config');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const storedConfig = getStoredTicketsConfig();
+
   const { control, handleSubmit, reset, formState, watch } = useForm<TicketsFeature>({
     defaultValues: {
-      panelChannelId: initial?.panelChannelId || '1520717489548558416',
-      categoryId: sanitizeCategory(initial?.categoryId),
-      logChannelId: sanitizeLogChannel(initial?.logChannelId),
-      supportRoleId: sanitizeSupportRole(initial?.supportRoleId),
-      ceoRoleId: sanitizeCeoRole(initial?.ceoRoleId),
-      enableTranscripts: initial?.enableTranscripts ?? true,
-      enableDmFeedback: initial?.enableDmFeedback ?? true,
-      embedTitle: sanitizeTitle(initial?.embedTitle),
-      embedDescription: sanitizeDesc(initial?.embedDescription),
-      embedColor: initial?.embedColor || '#7c3aed',
-      embedBannerUrl: sanitizeBanner(initial?.embedBannerUrl),
-      departments: sanitizeDepartments(initial?.departments),
+      panelChannelId: initial?.panelChannelId || storedConfig?.panelChannelId || '1520717489548558416',
+      categoryId: sanitizeCategory(initial?.categoryId || storedConfig?.categoryId),
+      logChannelId: sanitizeLogChannel(initial?.logChannelId || storedConfig?.logChannelId),
+      supportRoleId: sanitizeSupportRole(initial?.supportRoleId || storedConfig?.supportRoleId),
+      ceoRoleId: sanitizeCeoRole(initial?.ceoRoleId || storedConfig?.ceoRoleId),
+      enableTranscripts: initial?.enableTranscripts ?? storedConfig?.enableTranscripts ?? true,
+      enableDmFeedback: initial?.enableDmFeedback ?? storedConfig?.enableDmFeedback ?? true,
+      embedTitle: sanitizeTitle(initial?.embedTitle || storedConfig?.embedTitle),
+      embedDescription: sanitizeDesc(initial?.embedDescription || storedConfig?.embedDescription),
+      embedColor: initial?.embedColor || storedConfig?.embedColor || '#7c3aed',
+      embedBannerUrl: sanitizeBanner(initial?.embedBannerUrl || storedConfig?.embedBannerUrl),
+      departments: sanitizeDepartments(initial?.departments || storedConfig?.departments),
     },
   });
 
@@ -83,20 +95,22 @@ export const useTicketsFeature: UseFormRender<TicketsFeature> = (
   });
 
   useEffect(() => {
-    if (initial) {
+    const localSaved = getStoredTicketsConfig();
+    const active = initial || localSaved;
+    if (active) {
       reset({
-        panelChannelId: initial.panelChannelId || '1520717489548558416',
-        categoryId: sanitizeCategory(initial.categoryId),
-        logChannelId: sanitizeLogChannel(initial.logChannelId),
-        supportRoleId: sanitizeSupportRole(initial.supportRoleId),
-        ceoRoleId: sanitizeCeoRole(initial.ceoRoleId),
-        enableTranscripts: initial.enableTranscripts ?? true,
-        enableDmFeedback: initial.enableDmFeedback ?? true,
-        embedTitle: sanitizeTitle(initial.embedTitle),
-        embedDescription: sanitizeDesc(initial.embedDescription),
-        embedColor: initial.embedColor || '#7c3aed',
-        embedBannerUrl: sanitizeBanner(initial.embedBannerUrl),
-        departments: sanitizeDepartments(initial.departments),
+        panelChannelId: active.panelChannelId || '1520717489548558416',
+        categoryId: sanitizeCategory(active.categoryId),
+        logChannelId: sanitizeLogChannel(active.logChannelId),
+        supportRoleId: sanitizeSupportRole(active.supportRoleId),
+        ceoRoleId: sanitizeCeoRole(active.ceoRoleId),
+        enableTranscripts: active.enableTranscripts ?? true,
+        enableDmFeedback: active.enableDmFeedback ?? true,
+        embedTitle: sanitizeTitle(active.embedTitle),
+        embedDescription: sanitizeDesc(active.embedDescription),
+        embedColor: active.embedColor || '#7c3aed',
+        embedBannerUrl: sanitizeBanner(active.embedBannerUrl),
+        departments: sanitizeDepartments(active.departments),
       });
     }
   }, [initial, reset]);
@@ -121,6 +135,11 @@ module.exports = {
 };`;
 
   const onFormSubmit = async (data: TicketsFeature) => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('mg3_tickets_config', JSON.stringify(data));
+      } catch {}
+    }
     const jsonStr = JSON.stringify(data);
     await onSubmit(jsonStr);
     reset(data);
