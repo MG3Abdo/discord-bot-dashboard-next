@@ -54,12 +54,12 @@ export const useTicketsFeature: UseFormRender<TicketsFeature> = (
   const sanitizeDepartments = (depts?: TicketDepartment[]) =>
     depts && Array.isArray(depts) && depts.length >= 11 ? depts : DEFAULT_DEPARTMENTS;
 
-  const sanitizeCategory = (cat?: string) => (cat && cat !== '' ? cat : '1520716447817531402');
+  const sanitizeCategory = (cat?: string) => (cat && cat.trim() !== '' ? cat : '1520716447817531402');
   const sanitizeLogChannel = (log?: string) =>
-    log && log !== '' && log !== '1240011818223796284' ? log : '1521039167100944505';
-  const sanitizeCeoRole = (role?: string) => (role && role !== '' ? role : '1295921618400313434');
+    log && log.trim() !== '' && log !== '1240011818223796284' ? log : '1521039167100944505';
+  const sanitizeCeoRole = (role?: string) => (role && role.trim() !== '' ? role : '1295921618400313434');
   const sanitizeSupportRole = (role?: string) =>
-    role && role !== '' && role !== '1523666892860948520' ? role : '1295921618400313434';
+    role && role.trim() !== '' && role !== '1523666892860948520' ? role : '1295921618400313434';
 
   const getStoredTicketsConfig = () => {
     if (typeof window === 'undefined') return null;
