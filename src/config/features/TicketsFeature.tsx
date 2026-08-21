@@ -51,6 +51,8 @@ export const useTicketsFeature: UseFormRender<TicketsFeature> = (
     b && b !== 'https://i.imghos.co/MtalsvvN.png' ? b : 'https://i.imghos.co/BFqJGjlN.jpg';
   const sanitizeDesc = (d?: string) =>
     d && !d.includes('MG3 Support Services') ? d : '';
+  const sanitizeDepartments = (depts?: TicketDepartment[]) =>
+    depts && Array.isArray(depts) && depts.length >= 11 ? depts : DEFAULT_DEPARTMENTS;
 
   const { control, handleSubmit, reset, formState, watch } = useForm<TicketsFeature>({
     defaultValues: {
@@ -65,7 +67,7 @@ export const useTicketsFeature: UseFormRender<TicketsFeature> = (
       embedDescription: sanitizeDesc(initial?.embedDescription),
       embedColor: initial?.embedColor || '#7c3aed',
       embedBannerUrl: sanitizeBanner(initial?.embedBannerUrl),
-      departments: initial?.departments?.length ? initial.departments : DEFAULT_DEPARTMENTS,
+      departments: sanitizeDepartments(initial?.departments),
     },
   });
 
@@ -88,7 +90,7 @@ export const useTicketsFeature: UseFormRender<TicketsFeature> = (
         embedDescription: sanitizeDesc(initial.embedDescription),
         embedColor: initial.embedColor || '#7c3aed',
         embedBannerUrl: sanitizeBanner(initial.embedBannerUrl),
-        departments: initial.departments?.length ? initial.departments : DEFAULT_DEPARTMENTS,
+        departments: sanitizeDepartments(initial.departments),
       });
     }
   }, [initial, reset]);

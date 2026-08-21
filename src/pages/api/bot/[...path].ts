@@ -623,7 +623,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Roles Request: /guild/:id/roles
     // -----------------------------------------------------------------------
     if (subResource === 'roles') {
+      const cached = guildResourcesCache.get(guildId);
+      if (cached && cached.expiry > Date.now() && Array.isArray(cached.data?.roles) && cached.data.roles.length > 0) {
+        return res.status(200).json(cached.data.roles);
+      }
+
       if (!BOT_TOKEN) {
+        if (cached?.data?.roles) return res.status(200).json(cached.data.roles);
         return res.status(500).json({ error: 'Bot token is not configured on server (DISCORD_BOT_TOKEN)' });
       }
 
@@ -645,16 +651,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }));
           return res.status(200).json(normalizedRoles);
         } else {
+          if (cached?.data?.roles) return res.status(200).json(cached.data.roles);
           const errText = await rolesRes.text().catch(() => '');
-          if (rolesRes.status === 403) {
-            return res.status(403).json({ error: 'Bot lacks permission to view roles in this server' });
-          }
-          if (rolesRes.status === 404) {
-            return res.status(404).json({ error: 'Server not found or Bot is not in this server' });
-          }
           return res.status(rolesRes.status).json({ error: `Discord API returned status ${rolesRes.status}: ${errText}` });
         }
       } catch (e: any) {
+        if (cached?.data?.roles) return res.status(200).json(cached.data.roles);
         return res.status(500).json({ error: e?.message || 'Failed to fetch roles from Discord API' });
       }
     }
@@ -663,7 +665,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Channels Request: /guild/:id/channels
     // -----------------------------------------------------------------------
     if (subResource === 'channels') {
+      const cached = guildResourcesCache.get(guildId);
+      if (cached && cached.expiry > Date.now() && Array.isArray(cached.data?.channels) && cached.data.channels.length > 0) {
+        return res.status(200).json(cached.data.channels);
+      }
+
       if (!BOT_TOKEN) {
+        if (cached?.data?.channels) return res.status(200).json(cached.data.channels);
         return res.status(500).json({ error: 'Bot token is not configured on server (DISCORD_BOT_TOKEN)' });
       }
 
@@ -685,16 +693,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }));
           return res.status(200).json(normalizedChannels);
         } else {
+          if (cached?.data?.channels) return res.status(200).json(cached.data.channels);
           const errText = await channelsRes.text().catch(() => '');
-          if (channelsRes.status === 403) {
-            return res.status(403).json({ error: 'Bot lacks permission to view channels in this server' });
-          }
-          if (channelsRes.status === 404) {
-            return res.status(404).json({ error: 'Server not found or Bot is not in this server' });
-          }
           return res.status(channelsRes.status).json({ error: `Discord API returned status ${channelsRes.status}: ${errText}` });
         }
       } catch (e: any) {
+        if (cached?.data?.channels) return res.status(200).json(cached.data.channels);
         return res.status(500).json({ error: e?.message || 'Failed to fetch channels from Discord API' });
       }
     }
@@ -841,6 +845,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
           if (saved.embedDescription && saved.embedDescription.includes('MG3 Support Services')) {
             saved.embedDescription = '';
+          }
+          if (!saved.departments || !Array.isArray(saved.departments) || saved.departments.length < 11) {
+            saved.departments = DEFAULT_FEATURE_TEMPLATE.tickets.departments;
           }
         }
 
