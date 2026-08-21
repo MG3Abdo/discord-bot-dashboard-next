@@ -372,20 +372,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // /guild/:id/features/:feature/publish
     // -----------------------------------------------------------------------
     if (subResource === 'features' && targetFeature && (parts[4] === 'publish' || parts[4] === 'deploy')) {
-      const config = guildFeatureStore[guildId]?.[targetFeature] || {};
+      const dbConfig = await getFeatureConfigFromDb(guildId, targetFeature);
+      const memConfig = guildFeatureStore[guildId]?.[targetFeature];
+      const fallbackConfig = getMainStoreFallback(guildId, targetFeature);
+      const config = { ...fallbackConfig, ...memConfig, ...dbConfig };
+
       const targetChannelId =
         config.panelChannelId ||
         config.channelId ||
         config.welcomeChannelId ||
         config.defaultChannelId ||
         config.requestChannelId ||
-        config.receiptLogChannelId;
-
-      if (!targetChannelId) {
-        return res.status(400).json({
-          error: 'Please select a channel in the dropdown first and click Save before sending to Discord.',
-        });
-      }
+        config.receiptLogChannelId ||
+        '1520717489548558416';
 
       if (!BOT_TOKEN) {
         return res.status(500).json({ error: 'Bot token is not configured on server (DISCORD_BOT_TOKEN)' });
@@ -419,17 +418,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
 
         const storeName = config.storeName || authCheck.guild?.name || 'MG3 STORE';
-        const logoUrl = config.logoUrl || 'https://i.imghos.co/ZFoEJatj.gif';
-        const bannerUrl = config.embedBannerUrl || 'https://i.imghos.co/BFqJGjlN.jpg';
+        const logoUrl = 'https://i.imghos.co/ZFoEJatj.gif';
+        let bannerUrl = config.embedBannerUrl;
+        if (!bannerUrl || bannerUrl === 'https://i.imghos.co/MtalsvvN.png') {
+          bannerUrl = 'https://i.imghos.co/BFqJGjlN.jpg';
+        }
+        let embedTitle = config.embedTitle;
+        if (!embedTitle || embedTitle === '🎫 MG3 STORE • SUPPORT TICKETS') {
+          embedTitle = 'Click below to create a new ticket';
+        }
+        let embedDescription = config.embedDescription;
+        if (embedDescription && embedDescription.includes('MG3 Support Services')) {
+          embedDescription = undefined;
+        }
 
         payload = {
           embeds: [
             {
               author: { name: storeName, icon_url: logoUrl },
-              title: config.embedTitle || 'Click below to create a new ticket',
-              description: config.embedDescription || undefined,
+              title: embedTitle,
+              description: embedDescription || undefined,
               color: parseInt((config.embedColor || '#7c3aed').replace('#', ''), 16) || 0x7c3aed,
-              thumbnail: { url: config.thumbnailUrl || logoUrl },
+              thumbnail: { url: logoUrl },
               image: { url: bannerUrl },
               footer: { text: config.footerText || `Enjoy your stay in ${storeName}`, icon_url: logoUrl },
               timestamp: new Date().toISOString(),
@@ -779,7 +789,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (req.method === 'GET') {
         const fromDb = await getFeatureConfigFromDb(guildId, targetFeature);
         const fallback = getMainStoreFallback(guildId, targetFeature);
-        const saved = fromDb ? { ...fallback, ...fromDb } : (guildFeatureStore[guildId]?.[targetFeature] || fallback);
+        let saved = fromDb ? { ...fallback, ...fromDb } : (guildFeatureStore[guildId]?.[targetFeature] || fallback);
+
+        if (saved && targetFeature === 'tickets') {
+          if (!saved.embedBannerUrl || saved.embedBannerUrl === 'https://i.imghos.co/MtalsvvN.png') {
+            saved.embedBannerUrl = 'https://i.imghos.co/BFqJGjlN.jpg';
+          }
+          if (!saved.embedTitle || saved.embedTitle === '🎫 MG3 STORE • SUPPORT TICKETS') {
+            saved.embedTitle = 'Click below to create a new ticket';
+          }
+          if (saved.embedDescription && saved.embedDescription.includes('MG3 Support Services')) {
+            saved.embedDescription = '';
+          }
+        }
+
         return res.status(200).json(saved);
       }
 
@@ -788,11 +811,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const fallback = getMainStoreFallback(guildId, targetFeature);
         const merged = {
           ...fallback,
-          ...(guildFeatureStore[guildId][targetFeature] || {}),
+          ...(guildFeatureStore[guildId]?.[targetFeature] || {}),
           ...bodyData,
         };
+        if (!guildFeatureStore[guildId]) guildFeatureStore[guildId] = {};
         guildFeatureStore[guildId][targetFeature] = merged;
-        guildEnabledStore[guildId].add(targetFeature);
+        guildEnabledStore[guildId]?.add(targetFeature);
         await saveFeatureConfigToDb(guildId, targetFeature, merged);
         return res.status(200).json(merged);
       }
