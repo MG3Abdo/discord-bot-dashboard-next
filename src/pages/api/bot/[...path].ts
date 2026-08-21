@@ -30,28 +30,42 @@ async function getFeatureConfigFromDb(guildId: string, feature: string) {
   const db = await getMongoDb();
   if (!db) return null;
   try {
-    const col = db.collection('keyv');
-    const key1 = `keyv:feature:${guildId}:${feature}`;
-    const key2 = `feature:${guildId}:${feature}`;
+    const key1 = `feature:${guildId}:${feature}`;
+    const key2 = `keyv:feature:${guildId}:${feature}`;
 
-    const doc = await col.findOne({
-      $or: [
-        { _id: key1 as any },
-        { key: key1 },
-        { _id: key2 as any },
-        { key: key2 },
-      ],
-    });
+    const collections = [
+      db.collection('kvstores'),
+      db.collection('keyv'),
+      db.collection('kvstore'),
+    ];
 
-    if (!doc) return null;
-    let val = doc.value;
-    if (typeof val === 'string') {
-      try { val = JSON.parse(val); } catch {}
+    for (const col of collections) {
+      try {
+        const doc = await col.findOne({
+          $or: [
+            { key: key1 },
+            { _id: key1 as any },
+            { key: key2 },
+            { _id: key2 as any },
+          ],
+        });
+
+        if (doc && doc.value != null) {
+          let val = doc.value;
+          if (typeof val === 'string') {
+            try { val = JSON.parse(val); } catch {}
+          }
+          if (val && typeof val === 'object' && (val as any).value !== undefined) {
+            val = (val as any).value;
+          }
+          if (val && typeof val === 'string') {
+            try { val = JSON.parse(val); } catch {}
+          }
+          if (val && typeof val === 'object') return val;
+        }
+      } catch {}
     }
-    if (val && typeof val === 'object' && (val as any).value !== undefined) {
-      return (val as any).value;
-    }
-    return val;
+    return null;
   } catch (e) {
     console.warn('Error reading from MongoDB in dashboard:', e);
     return null;
@@ -62,34 +76,30 @@ async function saveFeatureConfigToDb(guildId: string, feature: string, data: any
   const db = await getMongoDb();
   if (!db) return false;
   try {
-    const col = db.collection('keyv');
-    const key1 = `keyv:feature:${guildId}:${feature}`;
-    const key2 = `feature:${guildId}:${feature}`;
-    const serialized = JSON.stringify({ value: data, expires: null });
+    const key1 = `feature:${guildId}:${feature}`;
+    const key2 = `keyv:feature:${guildId}:${feature}`;
+    const serializedKeyv = JSON.stringify({ value: data, expires: null });
 
-    // 1. Primary Keyv Format (_id and key)
-    await col.updateOne(
-      { _id: key1 as any },
-      { $set: { key: key1, value: serialized, updatedAt: new Date() }, $setOnInsert: { _id: key1 as any } },
-      { upsert: true }
-    );
-    await col.updateOne(
-      { key: key1 },
-      { $set: { key: key1, value: serialized, updatedAt: new Date() }, $setOnInsert: { _id: key1 as any } },
-      { upsert: true }
-    );
+    const colKv = db.collection('kvstores');
+    const colKeyv = db.collection('keyv');
 
-    // 2. Secondary Plain Key Format (_id and key)
-    await col.updateOne(
-      { _id: key2 as any },
-      { $set: { key: key2, value: data, updatedAt: new Date() }, $setOnInsert: { _id: key2 as any } },
-      { upsert: true }
-    );
-    await col.updateOne(
-      { key: key2 },
-      { $set: { key: key2, value: data, updatedAt: new Date() }, $setOnInsert: { _id: key2 as any } },
-      { upsert: true }
-    );
+    await Promise.allSettled([
+      colKv.updateOne(
+        { key: key1 },
+        { $set: { key: key1, value: data } },
+        { upsert: true }
+      ),
+      colKeyv.updateOne(
+        { key: key1 },
+        { $set: { key: key1, value: data } },
+        { upsert: true }
+      ),
+      colKeyv.updateOne(
+        { _id: key2 as any },
+        { $set: { key: key2, value: serializedKeyv } },
+        { upsert: true }
+      ),
+    ]);
 
     return true;
   } catch (e) {
