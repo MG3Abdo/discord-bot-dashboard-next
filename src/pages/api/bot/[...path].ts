@@ -30,13 +30,24 @@ async function getFeatureConfigFromDb(guildId: string, feature: string) {
   if (!db) return null;
   try {
     const col = db.collection('keyv');
-    const doc = (await col.findOne({ key: `keyv:feature:${guildId}:${feature}` })) || (await col.findOne({ key: `feature:${guildId}:${feature}` }));
+    const key1 = `keyv:feature:${guildId}:${feature}`;
+    const key2 = `feature:${guildId}:${feature}`;
+
+    const doc = await col.findOne({
+      $or: [
+        { _id: key1 as any },
+        { key: key1 },
+        { _id: key2 as any },
+        { key: key2 },
+      ],
+    });
+
     if (!doc) return null;
     let val = doc.value;
     if (typeof val === 'string') {
       try { val = JSON.parse(val); } catch {}
     }
-    if (val && typeof val === 'object' && (val as any).value) {
+    if (val && typeof val === 'object' && (val as any).value !== undefined) {
       return (val as any).value;
     }
     return val;
@@ -51,18 +62,34 @@ async function saveFeatureConfigToDb(guildId: string, feature: string, data: any
   if (!db) return false;
   try {
     const col = db.collection('keyv');
-    const key = `keyv:feature:${guildId}:${feature}`;
+    const key1 = `keyv:feature:${guildId}:${feature}`;
+    const key2 = `feature:${guildId}:${feature}`;
     const serialized = JSON.stringify({ value: data, expires: null });
+
+    // 1. Primary Keyv Format (_id and key)
     await col.updateOne(
-      { key },
-      { $set: { key, value: serialized, updatedAt: new Date() } },
+      { _id: key1 as any },
+      { $set: { _id: key1 as any, key: key1, value: serialized, updatedAt: new Date() } },
       { upsert: true }
     );
     await col.updateOne(
-      { key: `feature:${guildId}:${feature}` },
-      { $set: { key: `feature:${guildId}:${feature}`, value: data, updatedAt: new Date() } },
+      { key: key1 },
+      { $set: { _id: key1 as any, key: key1, value: serialized, updatedAt: new Date() } },
       { upsert: true }
     );
+
+    // 2. Secondary Plain Key Format (_id and key)
+    await col.updateOne(
+      { _id: key2 as any },
+      { $set: { _id: key2 as any, key: key2, value: data, updatedAt: new Date() } },
+      { upsert: true }
+    );
+    await col.updateOne(
+      { key: key2 },
+      { $set: { _id: key2 as any, key: key2, value: data, updatedAt: new Date() } },
+      { upsert: true }
+    );
+
     return true;
   } catch (e) {
     console.warn('Error writing to MongoDB in dashboard:', e);
@@ -232,9 +259,11 @@ const guildFeatureStore: Record<string, Record<string, any>> = {};
 const guildEnabledStore: Record<string, Set<string>> = {};
 
 function getMainStoreFallback(gId: string, feat: string) {
+  const fallback = { ...(DEFAULT_FEATURE_TEMPLATE[feat] || {}) };
   if (gId === '928462399852412979') {
     if (feat === 'tickets') {
       return {
+        ...fallback,
         panelChannelId: '1520717489548558416',
         categoryId: '1520716447817531402',
         logChannelId: '1521039167100944505',
@@ -252,23 +281,25 @@ function getMainStoreFallback(gId: string, feat: string) {
         departments: DEFAULT_FEATURE_TEMPLATE.tickets.departments,
       };
     }
-    if (feat === 'welcome') {
+    if (feat === 'payment') {
       return {
-        channelId: '1240012015091712061',
-        rulesChannelId: '1240011681283969064',
-        feedbackChannelId: '1447420576162648064',
-        ticketChannelId: '1520717489548558416',
+        ...fallback,
         paymentChannelId: '1526685412234362890',
-        roleGamesChannelId: '1523666892860948520',
-        autoRoleId: '939445945320505394',
-        show_quick_links: true,
-        show_server_info: true,
-        welcomeTitle: '🎉 Welcome to MG3 STORE!',
-        welcomeDescription: 'Welcome to MG3 STORE!',
+        receiptLogChannelId: '1521039167100944505',
+        bannerUrl: 'https://i.imghos.co/BFqJGjlN.jpg',
+        logoUrl: 'https://i.imghos.co/ZFoEJatj.gif',
+      };
+    }
+    if (feat === 'reaction-roles') {
+      return {
+        ...fallback,
+        channelId: '1523666892860948520',
+        panelBannerUrl: 'https://i.imghos.co/MLyjjcyY.webp',
       };
     }
     if (feat === 'server-logs') {
       return {
+        ...fallback,
         memberJoinChannel: '1240011818223796284',
         memberLeftChannel: '1240011818223796284',
         messageDeleteChannel: '1240011786523115591',
@@ -280,8 +311,80 @@ function getMainStoreFallback(gId: string, feat: string) {
         autoJoinRoleId: '939445945320505394',
       };
     }
+    if (feat === 'welcome') {
+      return {
+        ...fallback,
+        channelId: '1240012015091712061',
+        rulesChannelId: '1240011681283969064',
+        feedbackChannelId: '1447420576162648064',
+        ticketChannelId: '1520717489548558416',
+        paymentChannelId: '1526685412234362890',
+        roleGamesChannelId: '1523666892860948520',
+        autoRoleId: '939445945320505394',
+        welcomeBannerUrl: 'https://i.imghos.co/BFqJGjlN.jpg',
+      };
+    }
+    if (feat === 'feedback') {
+      return {
+        ...fallback,
+        channelId: '1447420576162648064',
+        feedbackChannelId: '1447420576162648064',
+        logChannelId: '1521039167100944505',
+      };
+    }
+    if (feat === 'suggestions') {
+      return {
+        ...fallback,
+        channelId: '1526691052415619112',
+        suggestionsChannelId: '1526691052415619112',
+        staffRoleId: '1295921618400313434',
+      };
+    }
+    if (feat === 'marketing-requests') {
+      return {
+        ...fallback,
+        requestChannelId: '1526252769788203039',
+        marketingRoleId: '1528551684526051339',
+        leaderRoleId: '1528551684526051339',
+        marketingLeaderRoleId: '1528551684526051339',
+      };
+    }
+    if (feat === 'blacklist') {
+      return {
+        ...fallback,
+        blacklistRoleId: '1522219288524492820',
+        ceoRoleId: '1295921618400313434',
+      };
+    }
   }
-  return DEFAULT_FEATURE_TEMPLATE[feat] || {};
+  return fallback;
+}
+
+function sanitizeFeatureConfig(saved: any, fallback: any, targetFeature: string) {
+  if (!saved || typeof saved !== 'object') return { ...fallback };
+  const result = { ...fallback, ...saved };
+
+  for (const key of Object.keys(fallback)) {
+    const fallbackVal = fallback[key];
+    const savedVal = saved[key];
+
+    // Replace empty strings, null, or undefined with non-empty default fallbacks
+    if ((savedVal === undefined || savedVal === null || savedVal === '') && fallbackVal !== undefined && fallbackVal !== '') {
+      result[key] = fallbackVal;
+    }
+  }
+
+  // Sanitize obsolete channel IDs
+  if (targetFeature === 'tickets') {
+    if (result.logChannelId === '1240011818223796284' || !result.logChannelId) {
+      result.logChannelId = '1521039167100944505';
+    }
+    if (!result.categoryId) result.categoryId = '1520716447817531402';
+    if (!result.panelChannelId) result.panelChannelId = '1520717489548558416';
+    if (!result.supportRoleId) result.supportRoleId = '1489650030959792159';
+  }
+
+  return result;
 }
 
 function initGuildStoreIfMissing(guildId: string) {
@@ -786,7 +889,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (req.method === 'GET') {
         const fromDb = await getFeatureConfigFromDb(guildId, targetFeature);
         const fallback = getMainStoreFallback(guildId, targetFeature);
-        let saved = fromDb ? { ...fallback, ...fromDb } : (guildFeatureStore[guildId]?.[targetFeature] || fallback);
+        const rawSaved = fromDb || guildFeatureStore[guildId]?.[targetFeature] || fallback;
+        let saved = sanitizeFeatureConfig(rawSaved, fallback, targetFeature);
 
         if (saved && targetFeature === 'tickets') {
           if (!saved.embedBannerUrl || saved.embedBannerUrl === 'https://i.imghos.co/MtalsvvN.png') {

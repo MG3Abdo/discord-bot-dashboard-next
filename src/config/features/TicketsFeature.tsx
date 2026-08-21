@@ -115,7 +115,8 @@ module.exports = {
 };`;
 
   const onFormSubmit = async (data: TicketsFeature) => {
-    await onSubmit(JSON.stringify(data));
+    const jsonStr = JSON.stringify(data);
+    await onSubmit(jsonStr);
     reset(data);
   };
 

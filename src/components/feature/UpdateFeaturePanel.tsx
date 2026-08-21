@@ -51,6 +51,9 @@ export function UpdateFeaturePanel({
         position: 'bottom-right',
       });
 
+      // Instantly synchronize query cache
+      await guildInfoQuery.refetch();
+
       return res;
     } catch (err: any) {
       toast({

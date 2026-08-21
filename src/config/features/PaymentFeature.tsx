@@ -20,7 +20,8 @@ export const usePaymentFeature: UseFormRender<PaymentFeature> = (
       instapayUsername: initial?.instapayUsername ?? '',
       paypalEmail: initial?.paypalEmail ?? '',
       binanceId: initial?.binanceId ?? '',
-      receiptLogChannelId: initial?.receiptLogChannelId ?? '',
+      paymentChannelId: initial?.paymentChannelId || '1526685412234362890',
+      receiptLogChannelId: initial?.receiptLogChannelId || '1521039167100944505',
       enableAutoConfirm: initial?.enableAutoConfirm ?? false,
     },
   });
@@ -32,7 +33,8 @@ export const usePaymentFeature: UseFormRender<PaymentFeature> = (
         instapayUsername: initial.instapayUsername ?? '',
         paypalEmail: initial.paypalEmail ?? '',
         binanceId: initial.binanceId ?? '',
-        receiptLogChannelId: initial.receiptLogChannelId ?? '',
+        paymentChannelId: initial.paymentChannelId || '1526685412234362890',
+        receiptLogChannelId: initial.receiptLogChannelId || '1521039167100944505',
         enableAutoConfirm: initial.enableAutoConfirm ?? false,
       });
     }
@@ -93,6 +95,13 @@ module.exports = {
         </SimpleGrid>
 
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4}>
+          <ChannelSelectForm
+            control={{
+              label: 'Payment Methods Channel',
+              description: 'Channel where the payment methods panel is posted.',
+            }}
+            controller={{ control, name: 'paymentChannelId' }}
+          />
           <ChannelSelectForm
             control={{
               label: 'Payment Receipt Logs Channel',
