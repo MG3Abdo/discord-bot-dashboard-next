@@ -487,13 +487,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // =========================================================================
   if (subpath.startsWith('guild/') || subpath.startsWith('guilds/')) {
     const parts = subpath.split('/');
-    const guildId = parts[1] || '928462399852412979';
+    const rawGuildId = parts[1];
+    const guildId =
+      !rawGuildId || rawGuildId === 'undefined' || rawGuildId === 'null' || rawGuildId === ''
+        ? '928462399852412979'
+        : rawGuildId;
     const subResource = parts[2]; // e.g. 'roles', 'channels', 'resources', 'features'
     const targetFeature = parts[3]; // e.g. 'payment', 'tickets'
-
-    if (!guildId || guildId === 'undefined') {
-      return res.status(400).json({ error: 'Invalid or missing guild ID in request URL' });
-    }
 
     // Step A: Strict User Authorization Check for this Guild
     const authCheck = await verifyUserGuildPermission(session.data.access_token, guildId);

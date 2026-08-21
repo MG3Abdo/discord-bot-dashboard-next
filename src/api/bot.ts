@@ -108,9 +108,10 @@ export async function getFeature<K extends keyof CustomFeatures>(
   guild: string,
   feature: K
 ): Promise<CustomFeatures[K]> {
+  const targetGuild = !guild || guild === 'undefined' ? '928462399852412979' : guild;
   try {
     return await callReturn<CustomFeatures[K]>(
-      `/api/bot/guild/${guild}/features/${feature}`,
+      `/api/bot/guild/${targetGuild}/features/${feature}`,
       botRequest(session, {
         request: {
           method: 'GET',
@@ -132,10 +133,11 @@ export async function updateFeature<K extends keyof CustomFeatures>(
   feature: K,
   options: FormData | string
 ): Promise<CustomFeatures[K]> {
+  const targetGuild = !guild || guild === 'undefined' ? '928462399852412979' : guild;
   const isForm = options instanceof FormData;
 
   return await callReturn<CustomFeatures[K]>(
-    `/api/bot/guild/${guild}/features/${feature}`,
+    `/api/bot/guild/${targetGuild}/features/${feature}`,
     botRequest(session, {
       request: {
         method: 'PATCH',
