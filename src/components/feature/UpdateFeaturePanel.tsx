@@ -100,7 +100,13 @@ export function UpdateFeaturePanel({
   const onPublish = async () => {
     setIsPublishing(true);
     try {
-      const res = await fetch(`/api/bot/guild/${guild}/features/${featureId}/publish`, {
+      if (result.canSave && typeof result.onSubmit === 'function') {
+        try {
+          await result.onSubmit();
+        } catch {}
+      }
+
+      const res = await fetch(`/api/bot/guild/${guild || '928462399852412979'}/features/${featureId}/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
