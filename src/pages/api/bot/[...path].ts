@@ -69,24 +69,24 @@ async function saveFeatureConfigToDb(guildId: string, feature: string, data: any
     // 1. Primary Keyv Format (_id and key)
     await col.updateOne(
       { _id: key1 as any },
-      { $set: { _id: key1 as any, key: key1, value: serialized, updatedAt: new Date() } },
+      { $set: { key: key1, value: serialized, updatedAt: new Date() }, $setOnInsert: { _id: key1 as any } },
       { upsert: true }
     );
     await col.updateOne(
       { key: key1 },
-      { $set: { _id: key1 as any, key: key1, value: serialized, updatedAt: new Date() } },
+      { $set: { key: key1, value: serialized, updatedAt: new Date() }, $setOnInsert: { _id: key1 as any } },
       { upsert: true }
     );
 
     // 2. Secondary Plain Key Format (_id and key)
     await col.updateOne(
       { _id: key2 as any },
-      { $set: { _id: key2 as any, key: key2, value: data, updatedAt: new Date() } },
+      { $set: { key: key2, value: data, updatedAt: new Date() }, $setOnInsert: { _id: key2 as any } },
       { upsert: true }
     );
     await col.updateOne(
       { key: key2 },
-      { $set: { _id: key2 as any, key: key2, value: data, updatedAt: new Date() } },
+      { $set: { key: key2, value: data, updatedAt: new Date() }, $setOnInsert: { _id: key2 as any } },
       { upsert: true }
     );
 
@@ -374,14 +374,23 @@ function sanitizeFeatureConfig(saved: any, fallback: any, targetFeature: string)
     }
   }
 
-  // Sanitize obsolete channel IDs
+  // Sanitize obsolete channel IDs and enforce hard-lock for tickets
   if (targetFeature === 'tickets') {
-    if (result.logChannelId === '1240011818223796284' || !result.logChannelId) {
+    if (!result.categoryId || result.categoryId === '') {
+      result.categoryId = '1520716447817531402';
+    }
+    if (!result.logChannelId || result.logChannelId === '' || result.logChannelId === '1240011818223796284') {
       result.logChannelId = '1521039167100944505';
     }
-    if (!result.categoryId) result.categoryId = '1520716447817531402';
-    if (!result.panelChannelId) result.panelChannelId = '1520717489548558416';
-    if (!result.supportRoleId) result.supportRoleId = '1489650030959792159';
+    if (!result.panelChannelId || result.panelChannelId === '') {
+      result.panelChannelId = '1520717489548558416';
+    }
+    if (!result.supportRoleId || result.supportRoleId === '') {
+      result.supportRoleId = '1489650030959792159';
+    }
+    if (!result.ceoRoleId || result.ceoRoleId === '') {
+      result.ceoRoleId = '1295921618400313434';
+    }
   }
 
   return result;
