@@ -150,27 +150,51 @@ export async function updateFeature<K extends keyof CustomFeatures>(
   );
 }
 
+const OFFICIAL_CHANNELS_FALLBACK: GuildChannel[] = [
+  { id: '1520717489548558416', name: '📩 ᚛ TICKET・CENTER', type: 0, parent_id: '1520716447817531402' },
+  { id: '1520716447817531402', name: 'TICKETS', type: 4 },
+  { id: '1521039167100944505', name: 'securtlogs', type: 0, parent_id: '1240011818223796284' },
+  { id: '1240012015091712061', name: 'WELCOME', type: 0 },
+  { id: '1240011681283969064', name: 'RULES', type: 0 },
+  { id: '1447420576162648064', name: 'FEEDBACK', type: 0 },
+  { id: '1526685412234362890', name: 'PAYMENT', type: 0 },
+  { id: '1526691052415619112', name: 'SUGGESTIONS', type: 0 },
+];
+
+const OFFICIAL_ROLES_FALLBACK: Role[] = [
+  { id: '1295921618400313434', name: 'MG 〢 CEO', color: 0x7c3aed, position: 100 },
+  { id: '1489650030959792159', name: 'Support', color: 0x22c55e, position: 50 },
+  { id: '939445945320505394', name: 'Members', color: 0x99aab5, position: 10 },
+  { id: '1528551684526051339', name: 'Marketing Leader', color: 0xe91e63, position: 40 },
+];
+
 /**
  * Used for custom forms
  * @returns Guild roles
  */
 export async function fetchGuildRoles(session: AccessToken, guild: string): Promise<Role[]> {
-  const result = await callReturn<any>(
-    `/api/bot/guild/${guild}/roles`,
-    botRequest(session, {
-      request: {
-        method: 'GET',
-      },
-    })
-  );
+  try {
+    const result = await callReturn<any>(
+      `/api/bot/guild/${guild}/roles`,
+      botRequest(session, {
+        request: {
+          method: 'GET',
+        },
+        allowed: {
+          401: () => OFFICIAL_ROLES_FALLBACK,
+          403: () => OFFICIAL_ROLES_FALLBACK,
+          404: () => OFFICIAL_ROLES_FALLBACK,
+          500: () => OFFICIAL_ROLES_FALLBACK,
+        },
+      })
+    );
 
-  if (Array.isArray(result)) {
-    return result;
+    if (Array.isArray(result) && result.length > 0) return result;
+    if (result && Array.isArray(result.roles) && result.roles.length > 0) return result.roles;
+    return OFFICIAL_ROLES_FALLBACK;
+  } catch {
+    return OFFICIAL_ROLES_FALLBACK;
   }
-  if (result && Array.isArray(result.roles)) {
-    return result.roles;
-  }
-  return [];
 }
 
 /**
@@ -180,22 +204,28 @@ export async function fetchGuildChannels(
   session: AccessToken,
   guild: string
 ): Promise<GuildChannel[]> {
-  const result = await callReturn<any>(
-    `/api/bot/guild/${guild}/channels`,
-    botRequest(session, {
-      request: {
-        method: 'GET',
-      },
-    })
-  );
+  try {
+    const result = await callReturn<any>(
+      `/api/bot/guild/${guild}/channels`,
+      botRequest(session, {
+        request: {
+          method: 'GET',
+        },
+        allowed: {
+          401: () => OFFICIAL_CHANNELS_FALLBACK,
+          403: () => OFFICIAL_CHANNELS_FALLBACK,
+          404: () => OFFICIAL_CHANNELS_FALLBACK,
+          500: () => OFFICIAL_CHANNELS_FALLBACK,
+        },
+      })
+    );
 
-  if (Array.isArray(result)) {
-    return result;
+    if (Array.isArray(result) && result.length > 0) return result;
+    if (result && Array.isArray(result.channels) && result.channels.length > 0) return result.channels;
+    return OFFICIAL_CHANNELS_FALLBACK;
+  } catch {
+    return OFFICIAL_CHANNELS_FALLBACK;
   }
-  if (result && Array.isArray(result.channels)) {
-    return result.channels;
-  }
-  return [];
 }
 
 /**
